@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { checkDbConnection } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +16,20 @@ export default async function Home() {
             Appmap
           </p>
           <h1 className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Hello World
+            App Map Editor
           </h1>
           <p className="text-lg text-zinc-600 dark:text-zinc-400">
-            Next.js · Tailwind CSS · Neon Postgres · Vercel
+            Design app flows on an infinite canvas with views, items, and
+            variants.
           </p>
         </div>
+
+        <Link
+          href="/editor"
+          className="inline-flex h-12 items-center justify-center rounded-full bg-zinc-900 px-8 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+        >
+          Open Editor
+        </Link>
 
         <div
           className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Appmap",
-  description: "Hello World — Next.js, Tailwind, Neon Postgres on Vercel",
+  description: "Infinite canvas app map editor with views, items, and variants",
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex h-full min-h-0 flex-col overflow-hidden">{children}</body>
     </html>
   );
 }
