@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { LegoAnchor, useLegoDrag, ViewTargetMarker } from "@/lib/canvas-layer";
+import { LegoAnchor, useLegoDrag } from "@/lib/canvas-layer";
 import {
   childrenInSection,
   getActiveVariant,
@@ -9,6 +9,7 @@ import {
   useAppMapStore,
 } from "@/store/appmap-store";
 import type { MapComponent, View } from "@/types/appmap";
+import { isEmbeddedSharedChild, isSharedInstance, resolveLegoType, resolveVariants } from "@/types/appmap";
 import { ComponentPreview } from "./ComponentPreview";
 import { LegoIcon } from "./LegoIcon";
 import {
@@ -78,10 +79,10 @@ export function ViewFrame({ view, zoom }: ViewFrameProps) {
   }, []);
 
   return (
-    <ViewTargetMarker viewId={view.id}>
-      <div
-        data-canvas-item
-        className={`absolute w-max min-w-[var(--view-width)] rounded-xl border shadow-xl transition-shadow ${
+    <div
+      data-canvas-item
+      data-view-target={view.id}
+      className={`absolute w-max min-w-[var(--view-width)] rounded-xl border shadow-xl transition-shadow ${
           isSelected
             ? "border-blue-500/60 shadow-blue-500/10"
             : showViewDrop
@@ -166,7 +167,6 @@ export function ViewFrame({ view, zoom }: ViewFrameProps) {
           )}
         </ViewDropZone>
       </div>
-    </ViewTargetMarker>
   );
 }
 
@@ -191,9 +191,9 @@ function PageSectionBlock({
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
-  const { components, selection, select, reorderChildComponent } =
+  const { components, selection, select, reorderChildComponent, sharedComponents } =
     useAppMapStore();
-  const variant = getActiveVariant(section);
+  const variant = getActiveVariant(section, sharedComponents);
   const children = childrenInSection(components, section.id);
 
   return (
@@ -219,7 +219,13 @@ function PageSectionBlock({
           }}
         >
           <LegoAnchor id={section.id}>
-            <ComponentPreview type="page-section" data={variant.data} />
+            <ComponentPreview
+              type={resolveLegoType(section, sharedComponents)}
+              data={variant.data}
+              componentBadge={
+                isSharedInstance(section) ? "component" : undefined
+              }
+            />
           </LegoAnchor>
           {isSelected ? (
             <ReorderControls
@@ -283,8 +289,11 @@ function ChildBlock({
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
-  const variant = getActiveVariant(child);
-  const variantCount = child.variants.length;
+  const { sharedComponents } = useAppMapStore();
+  const variant = getActiveVariant(child, sharedComponents);
+  const variants = resolveVariants(child, sharedComponents);
+  const variantCount = variants.length;
+  const legoType = resolveLegoType(child, sharedComponents);
 
   return (
     <div
@@ -303,7 +312,17 @@ function ChildBlock({
         </span>
       ) : null}
       <LegoAnchor id={child.id}>
-        <ComponentPreview type={child.type} data={variant.data} />
+        <ComponentPreview
+          type={legoType}
+          data={variant.data}
+          componentBadge={
+            isEmbeddedSharedChild(child)
+              ? "sub-component"
+              : isSharedInstance(child)
+                ? "component"
+                : undefined
+          }
+        />
       </LegoAnchor>
       {isSelected ? (
         <ReorderControls

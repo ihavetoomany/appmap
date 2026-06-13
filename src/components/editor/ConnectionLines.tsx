@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getActionCardCenter } from "@/lib/canvas-geometry";
+import { buildSoftActionPath, getActionCardCenter } from "@/lib/canvas-geometry";
 import { useConnectionAnchors, useCanvasLayerOptional } from "@/lib/canvas-layer";
 import { useAppMapStore } from "@/store/appmap-store";
 
 export function ConnectionLines() {
-  const { actionCards, views, components } = useAppMapStore();
+  const { actionCards, views, components, canvas } = useAppMapStore();
   const layerCtx = useCanvasLayerOptional();
   const [tick, setTick] = useState(0);
 
@@ -18,13 +18,27 @@ export function ConnectionLines() {
     () => [...new Set(actionCards.map((a) => a.targetViewId))],
     [actionCards]
   );
+  const layoutKey = useMemo(
+    () =>
+      [
+        canvas.x,
+        canvas.y,
+        canvas.zoom,
+        ...views.map((v) => `${v.id}:${v.x}:${v.y}:${v.width}`),
+        ...components.map(
+          (c) => `${c.id}:${c.viewId}:${c.order}:${c.pageSectionId ?? ""}`
+        ),
+      ].join("|"),
+    [canvas.x, canvas.y, canvas.zoom, views, components]
+  );
 
   const anchors = useConnectionAnchors(
     sourceIds,
     targetViewIds,
     layerCtx?.zoom ?? 1,
     layerCtx?.layerRef ?? { current: null },
-    tick
+    tick,
+    layoutKey
   );
 
   useEffect(() => {
@@ -54,11 +68,12 @@ export function ConnectionLines() {
         return (
           <g key={action.id}>
             <path
-              d={`M ${source.x} ${source.y} L ${center.x} ${center.y} L ${target.x} ${target.y}`}
+              d={buildSoftActionPath(source, center, target)}
               fill="none"
-              stroke="rgb(52 211 153 / 0.55)"
-              strokeWidth={2}
+              stroke="rgb(52 211 153 / 0.5)"
+              strokeWidth={2.5}
               strokeLinecap="round"
+              strokeLinejoin="round"
             />
             <circle cx={source.x} cy={source.y} r={4} fill="rgb(52 211 153)" />
             <circle cx={target.x} cy={target.y} r={4} fill="rgb(52 211 153)" />

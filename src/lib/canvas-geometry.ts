@@ -90,6 +90,22 @@ export function getActionCardCenter(action: ActionCard): { x: number; y: number 
   return { x: action.x + 80, y: action.y + 18 };
 }
 
+/** Rounded cubic path through source → action card → target view. */
+export function buildSoftActionPath(
+  source: { x: number; y: number },
+  center: { x: number; y: number },
+  target: { x: number; y: number }
+): string {
+  const curve = (from: { x: number; y: number }, to: { x: number; y: number }) => {
+    const midX = from.x + (to.x - from.x) * 0.5;
+    return `C ${midX} ${from.y}, ${midX} ${to.y}, ${to.x} ${to.y}`;
+  };
+
+  return [`M ${source.x} ${source.y}`, curve(source, center), curve(center, target)].join(
+    " "
+  );
+}
+
 export function midpointBetweenAnchors(
   source: { x: number; y: number },
   target: { x: number; y: number }

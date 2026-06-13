@@ -66,7 +66,8 @@ export function useConnectionAnchors(
   viewIds: string[],
   zoom: number,
   layerRef: RefObject<HTMLDivElement | null>,
-  tick: number
+  tick: number,
+  layoutKey = ""
 ) {
   const [anchors, setAnchors] = useState<{
     components: Map<string, CanvasPoint>;
@@ -90,7 +91,7 @@ export function useConnectionAnchors(
     }
 
     setAnchors({ components, views });
-  }, [componentIds, viewIds, zoom, layerRef, tick]);
+  }, [componentIds, viewIds, zoom, layerRef, tick, layoutKey]);
 
   return anchors;
 }
