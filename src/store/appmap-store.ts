@@ -34,6 +34,10 @@ import {
   resolveLegoType,
   resolveVariants,
 } from "@/types/appmap";
+import type { AppMapSnapshot } from "@/types/appmap-persist";
+import { migrateAppMapSnapshot } from "@/types/appmap-persist";
+
+export type DbSyncStatus = "idle" | "loading" | "saving" | "saved" | "error";
 
 interface AppMapStore {
   views: View[];
@@ -43,7 +47,9 @@ interface AppMapStore {
   selection: Selection;
   canvas: CanvasTransform;
   sidePanelOpen: boolean;
+  dbSync: DbSyncStatus;
 
+  setDbSync: (status: DbSyncStatus) => void;
   setCanvas: (canvas: Partial<CanvasTransform>) => void;
   select: (selection: Selection) => void;
   clearSelection: () => void;
@@ -341,6 +347,9 @@ export const useAppMapStore = create<AppMapStore>()(
       selection: null,
       canvas: { x: 0, y: 0, zoom: 1 },
       sidePanelOpen: true,
+      dbSync: "idle",
+
+      setDbSync: (status) => set({ dbSync: status }),
 
       setCanvas: (canvas) =>
         set((s) => ({ canvas: { ...s.canvas, ...canvas } })),
@@ -725,7 +734,7 @@ export const useAppMapStore = create<AppMapStore>()(
           id,
           name:
             active.data.title ||
-            (c.type === "page-section" ? "Page Section" : "Item"),
+            (c.type === "page-section" ? "Page Section" : "Section Item"),
           legoType: c.type as SharedComponent["legoType"],
           variants,
           children: isPageSection(c) ? embeddedChildren : undefined,
@@ -1381,32 +1390,40 @@ export const useAppMapStore = create<AppMapStore>()(
         })),
     }),
     {
-      name: "appmap-editor-v7",
+      name: "appmap-editor-v8",
       migrate: (persisted) => {
         const state = persisted as {
+          views?: AppMapSnapshot["views"];
           components?: MapComponent[];
           sharedComponents?: Array<
             SharedComponent & {
               childSlots?: Array<{ sharedComponentId: string; order: number }>;
             }
           >;
+          actionCards?: AppMapSnapshot["actionCards"];
+          canvas?: AppMapSnapshot["canvas"];
         };
 
         if (state.components) {
-          state.components = state.components.map((c) =>
-            (c.type as string) === "component" ? { ...c, type: "item" } : c
-          );
+          state.components = state.components.map((c) => {
+            const type = c.type as string;
+            if (type === "component" || type === "item") {
+              return { ...c, type: "section-item" as const };
+            }
+            return c;
+          });
         }
 
         if (!state.sharedComponents) {
           state.sharedComponents = [];
-          return persisted;
         }
 
-        const sharedById = new Map(state.sharedComponents.map((s) => [s.id, s]));
+        const sharedById = new Map(
+          (state.sharedComponents ?? []).map((s) => [s.id, s])
+        );
         const absorbedIds = new Set<string>();
 
-        state.sharedComponents = state.sharedComponents.map((sc) => {
+        state.sharedComponents = (state.sharedComponents ?? []).map((sc) => {
           if (!sc.childSlots?.length) {
             const { childSlots: _, ...rest } = sc;
             return rest;
@@ -1418,7 +1435,8 @@ export const useAppMapStore = create<AppMapStore>()(
               const childShared = sharedById.get(slot.sharedComponentId);
               return {
                 id: crypto.randomUUID(),
-                legoType: (childShared?.legoType ?? "item") as ChildComponentType,
+                legoType: (childShared?.legoType ??
+                  "section-item") as ChildComponentType,
                 order: slot.order,
                 variants: childShared
                   ? childShared.variants.map((v) => ({
@@ -1477,6 +1495,19 @@ export const useAppMapStore = create<AppMapStore>()(
           );
         }
 
+        const migrated = migrateAppMapSnapshot({
+          views: state.views ?? [],
+          components: state.components ?? [],
+          sharedComponents: state.sharedComponents ?? [],
+          actionCards: state.actionCards ?? [],
+          canvas: state.canvas ?? { x: 0, y: 0, zoom: 1 },
+        });
+        state.views = migrated.views;
+        state.components = migrated.components;
+        state.sharedComponents = migrated.sharedComponents;
+        state.actionCards = migrated.actionCards;
+        state.canvas = migrated.canvas;
+
         return persisted;
       },
       partialize: (s) => ({
@@ -1489,6 +1520,28 @@ export const useAppMapStore = create<AppMapStore>()(
     }
   )
 );
+
+export function getAppMapSnapshot(): AppMapSnapshot {
+  const s = useAppMapStore.getState();
+  return {
+    views: s.views,
+    components: s.components,
+    sharedComponents: s.sharedComponents,
+    actionCards: s.actionCards,
+    canvas: s.canvas,
+  };
+}
+
+export function hydrateAppMap(snapshot: AppMapSnapshot): void {
+  useAppMapStore.setState({
+    views: snapshot.views,
+    components: snapshot.components,
+    sharedComponents: snapshot.sharedComponents,
+    actionCards: snapshot.actionCards,
+    canvas: snapshot.canvas,
+    selection: null,
+  });
+}
 
 export function getActiveVariant(
   component: MapComponent,

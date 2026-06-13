@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppMapStore } from "@/store/appmap-store";
+import type { DbSyncStatus } from "@/store/appmap-store";
 import {
   canBeActionSource,
   CHILD_COMPONENT_TYPES,
@@ -25,6 +26,7 @@ export function Toolbar() {
     setCanvas,
     setSidePanelOpen,
     sidePanelOpen,
+    dbSync,
   } = useAppMapStore();
 
   const selectedComponent =
@@ -103,8 +105,8 @@ export function Toolbar() {
           onClick={() => addActionCard()}
           title={
             canAddAction
-              ? "Connect this item to another view"
-              : "Select an item inside a page section (needs 2+ views)"
+            ? "Connect this section item to another view"
+            : "Select a section item inside a page section (needs 2+ views)"
           }
           className="rounded-full border border-emerald-700/60 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:border-emerald-500 hover:bg-emerald-950/40 disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -112,6 +114,7 @@ export function Toolbar() {
         </button>
 
         <div className="ml-auto flex items-center gap-1">
+          <DbSyncIndicator status={dbSync} />
           <button
             type="button"
             onClick={() => setCanvas({ zoom: Math.max(0.25, canvas.zoom - 0.1) })}
@@ -202,5 +205,31 @@ export function Toolbar() {
         </div>
       ) : null}
     </header>
+  );
+}
+
+function DbSyncIndicator({ status }: { status: DbSyncStatus }) {
+  if (status === "idle") return null;
+
+  const label =
+    status === "loading"
+      ? "Loading…"
+      : status === "saving"
+        ? "Saving…"
+        : status === "saved"
+          ? "Saved"
+          : "Sync failed";
+
+  const className =
+    status === "error"
+      ? "text-amber-400"
+      : status === "saved"
+        ? "text-emerald-400/80"
+        : "text-zinc-500";
+
+  return (
+    <span className={`mr-2 text-[11px] font-medium ${className}`} aria-live="polite">
+      {label}
+    </span>
   );
 }

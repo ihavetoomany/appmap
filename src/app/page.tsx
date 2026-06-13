@@ -19,7 +19,7 @@ export default async function Home() {
             App Map Editor
           </h1>
           <p className="text-lg text-zinc-600 dark:text-zinc-400">
-            Design app flows on an infinite canvas with views, items, and
+            Design app flows on an infinite canvas with views, section items, and
             variants.
           </p>
         </div>

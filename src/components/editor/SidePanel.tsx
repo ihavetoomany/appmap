@@ -399,7 +399,7 @@ export function SidePanel() {
 
     return (
       <aside className="flex w-80 shrink-0 flex-col border-l border-zinc-800 bg-zinc-950">
-        <PanelHeader title="Action Card" subtitle="Item → View" />
+        <PanelHeader title="Action Card" subtitle="Section Item → View" />
         <div className="flex-1 overflow-y-auto p-4">
           <div className="mb-4 flex justify-center rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
             <div className="flex items-center gap-2 rounded-full border border-emerald-700/60 bg-zinc-900 px-4 py-2">
@@ -410,9 +410,9 @@ export function SidePanel() {
             </div>
           </div>
 
-          <Field label="From item">
+          <Field label="From section item">
             <div className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-300">
-              {sourceVariant?.data.title ?? "Unknown item"}
+              {sourceVariant?.data.title ?? "Unknown section item"}
               {sourceView ? (
                 <span className="mt-0.5 block text-xs text-zinc-500">
                   in {sourceView.name}

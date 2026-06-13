@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Appmap",
-  description: "Infinite canvas app map editor with views, items, and variants",
+  description: "Infinite canvas app map editor with views, section items, and variants",
 };
 
 export default function RootLayout({

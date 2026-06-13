@@ -1,6 +1,6 @@
 export type PageSectionType = "page-section";
 
-export type ChildComponentType = "item" | "data-action" | "user-input";
+export type ChildComponentType = "section-item" | "data-action" | "user-input";
 
 export type ComponentType = PageSectionType | ChildComponentType;
 
@@ -66,7 +66,7 @@ export interface ActionCardVariant {
   label: string;
 }
 
-/** Canvas-level connector: always from an item to a target view. */
+/** Canvas-level connector: always from a section item to a target view. */
 export interface ActionCard {
   id: string;
   sourceComponentId: string;
@@ -91,7 +91,7 @@ export type Selection =
   | null;
 
 export const CHILD_COMPONENT_TYPES: ChildComponentType[] = [
-  "item",
+  "section-item",
   "data-action",
   "user-input",
 ];
@@ -113,8 +113,8 @@ export const COMPONENT_META: Record<
     showDescription: true,
     showFields: true,
   },
-  item: {
-    label: "Item",
+  "section-item": {
+    label: "Section Item",
     icon: "diamond",
     accent: "text-violet-400",
     showDescription: true,
@@ -152,7 +152,7 @@ export function canConvertToShared(c: MapComponent): boolean {
   return (
     !c.sharedComponentId &&
     !c.sharedChildTemplateId &&
-    (c.type === "page-section" || c.type === "item")
+    (c.type === "page-section" || c.type === "section-item")
   );
 }
 

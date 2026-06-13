@@ -241,7 +241,7 @@ function PageSectionBlock({
       <div className="flex flex-col gap-1.5 px-2 pb-2 pt-1">
         {children.length === 0 ? (
           <p className="py-3 text-center text-[11px] text-zinc-600">
-            Add items inside this section
+            Add section items inside this section
           </p>
         ) : (
           children.map((child, childIndex) => (
