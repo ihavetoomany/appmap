@@ -5,6 +5,7 @@ import { CanvasLayerProvider, LegoDragProvider } from "@/lib/canvas-layer";
 import { useAppMapStore } from "@/store/appmap-store";
 import { ActionCardLayer } from "./ActionCardNode";
 import { ConnectionLines } from "./ConnectionLines";
+import { SectionDragPreview } from "./LegoDragUi";
 import { ViewFrame } from "./ViewFrame";
 
 export function InfiniteCanvas() {
@@ -123,11 +124,12 @@ export function InfiniteCanvas() {
             <ActionCardLayer zoom={canvas.zoom} />
           </div>
         </CanvasLayerProvider>
+        <SectionDragPreview />
       </LegoDragProvider>
 
       <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-500 shadow-sm backdrop-blur">
         Scroll to pan · ⌘/Ctrl + scroll to zoom · Alt + drag to pan · ↑↓
-        to reorder · Drag ⋮⋮ on page sections to move between views
+        to reorder · Drag page sections to move between views
       </div>
     </div>
   );

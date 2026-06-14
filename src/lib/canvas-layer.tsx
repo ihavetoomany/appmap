@@ -134,18 +134,51 @@ export interface LegoDragState {
 interface LegoDragContextValue {
   drag: LegoDragState | null;
   dropTarget: string | null;
+  dragPosition: { x: number; y: number } | null;
+  dragOffset: { x: number; y: number };
+  dragWidth: number | null;
   setDrag: (drag: LegoDragState | null) => void;
   setDropTarget: (target: string | null) => void;
+  setDragPosition: (position: { x: number; y: number } | null) => void;
+  setDragOffset: (offset: { x: number; y: number }) => void;
+  setDragWidth: (width: number | null) => void;
 }
 
 const LegoDragContext = createContext<LegoDragContextValue | null>(null);
 
 export function LegoDragProvider({ children }: { children: ReactNode }) {
-  const [drag, setDrag] = useState<LegoDragState | null>(null);
+  const [drag, setDragState] = useState<LegoDragState | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(
+    null
+  );
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [dragWidth, setDragWidth] = useState<number | null>(null);
+
+  const setDrag = useCallback((next: LegoDragState | null) => {
+    setDragState(next);
+    if (!next) {
+      setDragPosition(null);
+      setDragWidth(null);
+      setDropTarget(null);
+    }
+  }, []);
 
   return (
-    <LegoDragContext.Provider value={{ drag, dropTarget, setDrag, setDropTarget }}>
+    <LegoDragContext.Provider
+      value={{
+        drag,
+        dropTarget,
+        dragPosition,
+        dragOffset,
+        dragWidth,
+        setDrag,
+        setDropTarget,
+        setDragPosition,
+        setDragOffset,
+        setDragWidth,
+      }}
+    >
       {children}
     </LegoDragContext.Provider>
   );

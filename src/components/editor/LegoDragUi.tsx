@@ -2,7 +2,17 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useLegoDrag } from "@/lib/canvas-layer";
-import { useAppMapStore } from "@/store/appmap-store";
+import {
+  childrenInSection,
+  getActiveVariant,
+  useAppMapStore,
+} from "@/store/appmap-store";
+import {
+  isEmbeddedSharedChild,
+  isSharedInstance,
+  resolveLegoType,
+} from "@/types/appmap";
+import { ComponentPreview } from "./ComponentPreview";
 
 export function ViewDropZone({
   viewId,
@@ -29,17 +39,22 @@ export function ViewDropZone({
   );
 }
 
-/** Drag handle — page sections only, drop on a different view. */
-export function SectionGrabHandle({
-  visible,
+/** Drag surface — page sections only, drop on a different view. */
+export function SectionDragSurface({
+  enabled,
   sectionId,
   sourceViewId,
+  className,
+  children,
 }: {
-  visible: boolean;
+  enabled: boolean;
   sectionId: string;
   sourceViewId: string;
+  className?: string;
+  children: React.ReactNode;
 }) {
-  const { setDrag, setDropTarget } = useLegoDrag();
+  const { setDrag, setDropTarget, setDragPosition, setDragOffset, setDragWidth } =
+    useLegoDrag();
   const moveSectionToView = useAppMapStore((s) => s.moveSectionToView);
   const draggingRef = useRef(false);
 
@@ -59,10 +74,15 @@ export function SectionGrabHandle({
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      if (!enabled) return;
       e.stopPropagation();
-      e.preventDefault();
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      const surface = e.currentTarget as HTMLElement;
+      surface.setPointerCapture(e.pointerId);
+      const rect = surface.getBoundingClientRect();
       draggingRef.current = true;
+      setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      setDragWidth(rect.width);
+      setDragPosition({ x: e.clientX, y: e.clientY });
       setDrag({
         componentId: sectionId,
         kind: "page-section",
@@ -71,15 +91,25 @@ export function SectionGrabHandle({
       });
       setDropTarget(null);
     },
-    [sectionId, sourceViewId, setDrag, setDropTarget]
+    [
+      enabled,
+      sectionId,
+      sourceViewId,
+      setDrag,
+      setDragOffset,
+      setDragWidth,
+      setDragPosition,
+      setDropTarget,
+    ]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (!draggingRef.current) return;
+      setDragPosition({ x: e.clientX, y: e.clientY });
       setDropTarget(resolveDrop(e.clientX, e.clientY));
     },
-    [resolveDrop, setDropTarget]
+    [resolveDrop, setDragPosition, setDropTarget]
   );
 
   const handlePointerUp = useCallback(
@@ -90,42 +120,89 @@ export function SectionGrabHandle({
       const targetViewId = resolveDrop(e.clientX, e.clientY);
       if (targetViewId) moveSectionToView(sectionId, targetViewId);
       setDrag(null);
-      setDropTarget(null);
     },
-    [sectionId, moveSectionToView, resolveDrop, setDrag, setDropTarget]
+    [sectionId, moveSectionToView, resolveDrop, setDrag]
   );
 
   useEffect(() => {
     return () => {
       if (draggingRef.current) {
         setDrag(null);
-        setDropTarget(null);
       }
     };
-  }, [setDrag, setDropTarget]);
-
-  if (!visible) return null;
+  }, [setDrag]);
 
   return (
-    <button
-      type="button"
-      data-lego-handle
-      aria-label="Drag to move to another view"
-      className="flex w-6 shrink-0 cursor-grab items-center justify-center self-stretch rounded-l-md text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-300 active:cursor-grabbing"
+    <div
+      data-lego-handle={enabled || undefined}
+      className={
+        enabled
+          ? `cursor-grab active:cursor-grabbing ${className ?? ""}`
+          : className
+      }
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >
-      <svg viewBox="0 0 8 14" className="h-3.5 w-2" aria-hidden>
-        <circle cx="2" cy="2" r="1" fill="currentColor" />
-        <circle cx="6" cy="2" r="1" fill="currentColor" />
-        <circle cx="2" cy="7" r="1" fill="currentColor" />
-        <circle cx="6" cy="7" r="1" fill="currentColor" />
-        <circle cx="2" cy="12" r="1" fill="currentColor" />
-        <circle cx="6" cy="12" r="1" fill="currentColor" />
-      </svg>
-    </button>
+      {children}
+    </div>
+  );
+}
+
+/** Floating preview that follows the pointer while moving a page section. */
+export function SectionDragPreview() {
+  const { drag, dragPosition, dragOffset, dragWidth } = useLegoDrag();
+  const { components, sharedComponents } = useAppMapStore();
+
+  if (!drag || drag.kind !== "page-section" || !dragPosition || !dragWidth) {
+    return null;
+  }
+
+  const section = components.find((c) => c.id === drag.componentId);
+  if (!section) return null;
+
+  const variant = getActiveVariant(section, sharedComponents);
+  const children = childrenInSection(components, section.id);
+
+  return (
+    <div
+      className="pointer-events-none fixed z-50 rounded-lg border border-emerald-500/50 bg-zinc-900/95 shadow-2xl ring-2 ring-emerald-500/25 backdrop-blur-sm"
+      style={{
+        left: dragPosition.x - dragOffset.x,
+        top: dragPosition.y - dragOffset.y,
+        width: dragWidth,
+      }}
+    >
+      <div className="px-2 py-2">
+        <ComponentPreview
+          type={resolveLegoType(section, sharedComponents)}
+          data={variant.data}
+          componentBadge={isSharedInstance(section) ? "component" : undefined}
+        />
+      </div>
+      {children.length > 0 ? (
+        <div className="flex flex-col gap-1.5 px-2 pb-2 pt-1">
+          {children.map((child) => {
+            const childVariant = getActiveVariant(child, sharedComponents);
+            return (
+              <ComponentPreview
+                key={child.id}
+                type={resolveLegoType(child, sharedComponents)}
+                data={childVariant.data}
+                componentBadge={
+                  isEmbeddedSharedChild(child)
+                    ? "sub-component"
+                    : isSharedInstance(child)
+                      ? "component"
+                      : undefined
+                }
+              />
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -140,8 +217,11 @@ export function ReorderControls({
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
+  const buttonClass =
+    "flex h-7 w-7 items-center justify-center rounded-md border border-zinc-700/80 bg-zinc-800/90 text-zinc-200 transition-colors hover:border-zinc-600 hover:bg-zinc-700 hover:text-white disabled:pointer-events-none disabled:opacity-25";
+
   return (
-    <div className="mt-1 flex items-center justify-end gap-1">
+    <div className="mt-1.5 flex items-center justify-end gap-1.5">
       <button
         type="button"
         disabled={index === 0}
@@ -149,10 +229,16 @@ export function ReorderControls({
           e.stopPropagation();
           onMoveUp();
         }}
-        className="rounded px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-800 disabled:opacity-30"
+        onPointerDown={(e) => e.stopPropagation()}
+        className={buttonClass}
         aria-label="Move up"
       >
-        ↑
+        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden>
+          <path
+            fill="currentColor"
+            d="M8 4.5 3.5 9h9L8 4.5z"
+          />
+        </svg>
       </button>
       <button
         type="button"
@@ -161,10 +247,16 @@ export function ReorderControls({
           e.stopPropagation();
           onMoveDown();
         }}
-        className="rounded px-1.5 py-0.5 text-[10px] text-zinc-400 hover:bg-zinc-800 disabled:opacity-30"
+        onPointerDown={(e) => e.stopPropagation()}
+        className={buttonClass}
         aria-label="Move down"
       >
-        ↓
+        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden>
+          <path
+            fill="currentColor"
+            d="M8 11.5 12.5 7h-9L8 11.5z"
+          />
+        </svg>
       </button>
     </div>
   );

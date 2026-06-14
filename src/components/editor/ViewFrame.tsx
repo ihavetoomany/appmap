@@ -14,7 +14,7 @@ import { ComponentPreview } from "./ComponentPreview";
 import { LegoIcon } from "./LegoIcon";
 import {
   ReorderControls,
-  SectionGrabHandle,
+  SectionDragSurface,
   ViewDropZone,
 } from "./LegoDragUi";
 
@@ -197,45 +197,41 @@ function PageSectionBlock({
   const children = childrenInSection(components, section.id);
 
   return (
-    <div
+    <SectionDragSurface
+      enabled={isSelected}
+      sectionId={section.id}
+      sourceViewId={viewId}
       className={`rounded-lg border bg-zinc-900/40 transition-opacity ${
-        isDragging ? "opacity-40" : ""
+        isDragging ? "opacity-0" : ""
       } ${
         isSelected ? "border-amber-500/40 ring-2 ring-amber-500/20" : "border-zinc-800"
       }`}
     >
-      <div className="flex items-stretch">
-        <SectionGrabHandle
-          visible={isSelected}
-          sectionId={section.id}
-          sourceViewId={viewId}
-        />
-        <div
-          data-canvas-item
-          className="min-w-0 flex-1 cursor-pointer px-2 py-2"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect();
-          }}
-        >
-          <LegoAnchor id={section.id}>
-            <ComponentPreview
-              type={resolveLegoType(section, sharedComponents)}
-              data={variant.data}
-              componentBadge={
-                isSharedInstance(section) ? "component" : undefined
-              }
-            />
-          </LegoAnchor>
-          {isSelected ? (
-            <ReorderControls
-              index={sectionIndex}
-              total={sectionTotal}
-              onMoveUp={onMoveUp}
-              onMoveDown={onMoveDown}
-            />
-          ) : null}
-        </div>
+      <div
+        data-canvas-item
+        className="cursor-pointer px-2 py-2"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
+      >
+        <LegoAnchor id={section.id}>
+          <ComponentPreview
+            type={resolveLegoType(section, sharedComponents)}
+            data={variant.data}
+            componentBadge={
+              isSharedInstance(section) ? "component" : undefined
+            }
+          />
+        </LegoAnchor>
+        {isSelected ? (
+          <ReorderControls
+            index={sectionIndex}
+            total={sectionTotal}
+            onMoveUp={onMoveUp}
+            onMoveDown={onMoveDown}
+          />
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-1.5 px-2 pb-2 pt-1">
@@ -263,11 +259,12 @@ function PageSectionBlock({
                 childIndex < children.length - 1 &&
                 reorderChildComponent(section.id, child.id, childIndex + 1)
               }
+              stopSectionDrag={isSelected}
             />
           ))
         )}
       </div>
-    </div>
+    </SectionDragSurface>
   );
 }
 
@@ -279,6 +276,7 @@ function ChildBlock({
   onSelect,
   onMoveUp,
   onMoveDown,
+  stopSectionDrag = false,
 }: {
   child: MapComponent;
   childIndex: number;
@@ -288,6 +286,7 @@ function ChildBlock({
   onSelect: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  stopSectionDrag?: boolean;
 }) {
   const { sharedComponents } = useAppMapStore();
   const variant = getActiveVariant(child, sharedComponents);
@@ -304,6 +303,9 @@ function ChildBlock({
       onClick={(e) => {
         e.stopPropagation();
         onSelect();
+      }}
+      onPointerDown={(e) => {
+        if (stopSectionDrag) e.stopPropagation();
       }}
     >
       {variantCount > 1 ? (
