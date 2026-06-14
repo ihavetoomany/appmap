@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   clampCanvasZoom,
   wheelDeltaToZoomFactor,
@@ -21,36 +21,47 @@ export function InfiniteCanvas() {
   const [isPanning, setIsPanning] = useState(false);
   const panStart = useRef({ x: 0, y: 0, canvasX: 0, canvasY: 0 });
 
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.preventDefault();
-      const current = useAppMapStore.getState().canvas;
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
 
-      if (e.ctrlKey || e.metaKey) {
-        const el = canvasRef.current;
-        if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      // Pinch-to-zoom sends ctrlKey; Shift+scroll is a mouse-friendly alternative.
+      // Avoid metaKey so Cmd+scroll can stay browser zoom outside the canvas.
+      const isZoomGesture = e.ctrlKey || e.shiftKey;
 
+      if (isZoomGesture) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const current = useAppMapStore.getState().canvas;
         const rect = el.getBoundingClientRect();
         const anchorX = e.clientX - rect.left;
         const anchorY = e.clientY - rect.top;
+        const wheelDelta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
         const nextZoom = clampCanvasZoom(
-          current.zoom * wheelDeltaToZoomFactor(e.deltaY, e.deltaMode)
+          current.zoom * wheelDeltaToZoomFactor(wheelDelta, e.deltaMode)
         );
 
-        if (nextZoom === current.zoom) return;
-
-        setCanvas(
-          zoomCanvasAtPoint(current, nextZoom, anchorX, anchorY)
-        );
-      } else {
-        setCanvas({
-          x: current.x - e.deltaX,
-          y: current.y - e.deltaY,
-        });
+        if (nextZoom !== current.zoom) {
+          useAppMapStore
+            .getState()
+            .setCanvas(zoomCanvasAtPoint(current, nextZoom, anchorX, anchorY));
+        }
+        return;
       }
-    },
-    [setCanvas]
-  );
+
+      e.preventDefault();
+      const current = useAppMapStore.getState().canvas;
+      useAppMapStore.getState().setCanvas({
+        x: current.x - e.deltaX,
+        y: current.y - e.deltaY,
+      });
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false, capture: true });
+    return () => el.removeEventListener("wheel", onWheel, { capture: true });
+  }, []);
 
   const startPan = useCallback(
     (clientX: number, clientY: number) => {
@@ -110,15 +121,15 @@ export function InfiniteCanvas() {
     <div
       ref={canvasRef}
       data-canvas-viewport
-      className="relative h-full w-full overflow-hidden bg-zinc-950"
+      className="relative h-full w-full overflow-hidden bg-zinc-950 overscroll-none"
       style={{
         cursor: isPanning ? "grabbing" : "default",
+        touchAction: "none",
         backgroundImage:
           "radial-gradient(circle, rgb(161 161 170 / 0.35) 1px, transparent 1px)",
         backgroundSize: `${24 * canvas.zoom}px ${24 * canvas.zoom}px`,
         backgroundPosition: `${canvas.x}px ${canvas.y}px`,
       }}
-      onWheel={handleWheel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -151,8 +162,8 @@ export function InfiniteCanvas() {
       </LegoDragProvider>
 
       <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-500 shadow-sm backdrop-blur">
-        Scroll to pan · ⌘/Ctrl + scroll to zoom · Alt + drag to pan · ↑↓
-        to reorder · + Text for canvas labels
+        Scroll to pan · Pinch or Shift+scroll to zoom · Alt + drag to pan · ↑↓
+        to reorder
       </div>
     </div>
   );
