@@ -49,10 +49,9 @@ export function getViewAnchor(
   components: MapComponent[],
   side: "left" | "right"
 ): { x: number; y: number } {
-  const height = estimateViewHeight(view, components);
   return {
     x: side === "right" ? view.x + view.width : view.x,
-    y: view.y + height / 2,
+    y: view.y + VIEW_HEADER / 2,
   };
 }
 

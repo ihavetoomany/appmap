@@ -81,7 +81,6 @@ export function ViewFrame({ view, zoom }: ViewFrameProps) {
   return (
     <div
       data-canvas-item
-      data-view-target={view.id}
       className={`absolute w-max min-w-[var(--view-width)] rounded-xl border shadow-xl transition-shadow ${
           isSelected
             ? "border-blue-500/60 shadow-blue-500/10"
@@ -101,6 +100,7 @@ export function ViewFrame({ view, zoom }: ViewFrameProps) {
         onPointerCancel={handlePointerUp}
       >
         <div
+          data-view-target={view.id}
           className="cursor-grab rounded-t-xl border-b border-zinc-700/80 bg-zinc-900 px-3 py-2.5 active:cursor-grabbing"
           onPointerDown={handleViewPointerDown}
         >
