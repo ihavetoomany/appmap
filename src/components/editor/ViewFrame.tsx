@@ -9,11 +9,13 @@ import {
   useAppMapStore,
 } from "@/store/appmap-store";
 import type { MapComponent, View } from "@/types/appmap";
-import { isEmbeddedSharedChild, isSharedInstance, resolveLegoType, resolveVariants } from "@/types/appmap";
+import { isEmbeddedSharedChild, isSharedInstance, isSharedPageSectionInstance, resolveLegoType, resolveVariants } from "@/types/appmap";
 import { ComponentPreview } from "./ComponentPreview";
 import { LegoIcon } from "./LegoIcon";
 import {
+  ChildDragSurface,
   ReorderControls,
+  SectionChildDropZone,
   SectionDragSurface,
   ViewDropZone,
 } from "./LegoDragUi";
@@ -193,8 +195,15 @@ function PageSectionBlock({
 }) {
   const { components, selection, select, reorderChildComponent, sharedComponents } =
     useAppMapStore();
+  const { drag, dropTarget } = useLegoDrag();
   const variant = getActiveVariant(section, sharedComponents);
   const children = childrenInSection(components, section.id);
+  const acceptsChildDrop = !isSharedPageSectionInstance(section);
+  const showChildDrop =
+    acceptsChildDrop &&
+    drag?.kind === "child" &&
+    drag.pageSectionId !== section.id &&
+    dropTarget === section.id;
 
   return (
     <SectionDragSurface
@@ -234,10 +243,19 @@ function PageSectionBlock({
         ) : null}
       </div>
 
-      <div className="flex flex-col gap-1.5 px-2 pb-2 pt-1">
+      <SectionChildDropZone
+        sectionId={section.id}
+        active={showChildDrop}
+        droppable={acceptsChildDrop}
+        className={`flex flex-col gap-1.5 rounded-md px-2 pb-2 pt-1 transition-colors ${
+          showChildDrop ? "bg-blue-500/10 ring-2 ring-blue-500/30" : ""
+        }`}
+      >
         {children.length === 0 ? (
           <p className="py-3 text-center text-[11px] text-zinc-600">
-            Add section items inside this section
+            {showChildDrop
+              ? "Drop section item here"
+              : "Add section items inside this section"}
           </p>
         ) : (
           children.map((child, childIndex) => (
@@ -247,8 +265,12 @@ function PageSectionBlock({
               childIndex={childIndex}
               childTotal={children.length}
               sectionId={section.id}
+              viewId={viewId}
               isSelected={
                 selection?.kind === "component" && selection.id === child.id
+              }
+              isDragging={
+                drag?.kind === "child" && drag.componentId === child.id
               }
               onSelect={() => select({ kind: "component", id: child.id })}
               onMoveUp={() =>
@@ -263,7 +285,7 @@ function PageSectionBlock({
             />
           ))
         )}
-      </div>
+      </SectionChildDropZone>
     </SectionDragSurface>
   );
 }
@@ -272,7 +294,10 @@ function ChildBlock({
   child,
   childIndex,
   childTotal,
+  sectionId,
+  viewId,
   isSelected,
+  isDragging,
   onSelect,
   onMoveUp,
   onMoveDown,
@@ -282,7 +307,9 @@ function ChildBlock({
   childIndex: number;
   childTotal: number;
   sectionId: string;
+  viewId: string;
   isSelected: boolean;
+  isDragging: boolean;
   onSelect: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -293,21 +320,29 @@ function ChildBlock({
   const variants = resolveVariants(child, sharedComponents);
   const variantCount = variants.length;
   const legoType = resolveLegoType(child, sharedComponents);
+  const canDrag = isSelected && !isEmbeddedSharedChild(child);
 
   return (
-    <div
-      data-canvas-item
-      className={`relative w-full rounded-lg ${
-        isSelected ? "ring-2 ring-blue-500/40" : ""
-      }`}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect();
-      }}
-      onPointerDown={(e) => {
-        if (stopSectionDrag) e.stopPropagation();
-      }}
+    <ChildDragSurface
+      enabled={canDrag}
+      childId={child.id}
+      sourceSectionId={sectionId}
+      sourceViewId={viewId}
+      className={`relative w-full rounded-lg transition-opacity ${
+        isDragging ? "opacity-0" : ""
+      } ${isSelected ? "ring-2 ring-blue-500/40" : ""}`}
     >
+      <div
+        data-canvas-item
+        className="cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
+        onPointerDown={(e) => {
+          if (stopSectionDrag) e.stopPropagation();
+        }}
+      >
       {variantCount > 1 ? (
         <span className="absolute -right-1 -top-1 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-violet-500 px-1 text-[10px] font-bold text-white">
           {variantCount}
@@ -334,6 +369,7 @@ function ChildBlock({
           onMoveDown={onMoveDown}
         />
       ) : null}
-    </div>
+      </div>
+    </ChildDragSurface>
   );
 }

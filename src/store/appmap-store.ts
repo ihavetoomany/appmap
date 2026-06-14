@@ -28,6 +28,7 @@ import {
   defaultDataForType,
   defaultVariant,
   findSharedComponent,
+  isEmbeddedSharedChild,
   isPageSection,
   isSharedPageSectionInstance,
   pageSectionsInView,
@@ -71,6 +72,7 @@ interface AppMapStore {
     toIndex: number
   ) => void;
   moveSectionToView: (sectionId: string, targetViewId: string) => void;
+  moveChildToSection: (childId: string, targetSectionId: string) => void;
 
   convertToSharedComponent: (mapComponentId: string) => string | null;
   detachFromSharedComponent: (mapComponentId: string) => void;
@@ -666,6 +668,37 @@ export const useAppMapStore = create<AppMapStore>()(
             `view:${targetViewId}`,
             targetIndex
           );
+          return { components };
+        }),
+
+      moveChildToSection: (childId, targetSectionId) =>
+        set((s) => {
+          const child = s.components.find((c) => c.id === childId);
+          if (!child?.pageSectionId) return s;
+          if (child.pageSectionId === targetSectionId) return s;
+          if (isEmbeddedSharedChild(child)) return s;
+
+          const targetSection = s.components.find((c) => c.id === targetSectionId);
+          if (!targetSection || !isPageSection(targetSection)) return s;
+          if (isSharedPageSectionInstance(targetSection)) return s;
+
+          const sourceSectionId = child.pageSectionId;
+          const targetOrder = childrenInSection(s.components, targetSectionId).length;
+
+          let components = s.components.map((c) =>
+            c.id === childId
+              ? {
+                  ...c,
+                  pageSectionId: targetSectionId,
+                  viewId: targetSection.viewId,
+                  order: targetOrder,
+                }
+              : c
+          );
+
+          components = reindexSectionChildren(components, sourceSectionId);
+          components = reindexSectionChildren(components, targetSectionId);
+
           return { components };
         }),
 
@@ -1596,6 +1629,19 @@ function reindexSections(
     const idx = sections.findIndex((s) => s.id === c.id);
     return idx >= 0 ? { ...c, order: idx } : c;
   });
+}
+
+function reindexSectionChildren(
+  components: MapComponent[],
+  pageSectionId: string
+): MapComponent[] {
+  const sorted = childrenInSection(components, pageSectionId);
+  const orderMap = new Map(sorted.map((c, index) => [c.id, index] as const));
+  return components.map((c) =>
+    c.pageSectionId === pageSectionId && orderMap.has(c.id)
+      ? { ...c, order: orderMap.get(c.id)! }
+      : c
+  );
 }
 
 function applySectionDrop(
