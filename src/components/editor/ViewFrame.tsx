@@ -9,7 +9,7 @@ import {
   useAppMapStore,
 } from "@/store/appmap-store";
 import type { MapComponent, View } from "@/types/appmap";
-import { isEmbeddedSharedChild, isSharedInstance, isSharedPageSectionInstance, resolveLegoType, resolveVariants } from "@/types/appmap";
+import { isEmbeddedSharedChild, isSharedInstance, isSharedPageSectionInstance, getComponentPreviewLabels, resolveLegoType, resolveVariants } from "@/types/appmap";
 import { ComponentPreview } from "./ComponentPreview";
 import { LegoIcon } from "./LegoIcon";
 import {
@@ -197,6 +197,11 @@ function PageSectionBlock({
     useAppMapStore();
   const { drag, dropTarget } = useLegoDrag();
   const variant = getActiveVariant(section, sharedComponents);
+  const sectionVariants = resolveVariants(section, sharedComponents);
+  const sectionPreview = getComponentPreviewLabels(
+    sectionVariants,
+    section.activeVariantId
+  );
   const children = childrenInSection(components, section.id);
   const acceptsChildDrop = !isSharedPageSectionInstance(section);
   const showChildDrop =
@@ -228,6 +233,8 @@ function PageSectionBlock({
           <ComponentPreview
             type={resolveLegoType(section, sharedComponents)}
             data={variant.data}
+            title={sectionPreview.title}
+            variantName={sectionPreview.variantName}
             componentBadge={
               isSharedInstance(section) ? "component" : undefined
             }
@@ -320,6 +327,7 @@ function ChildBlock({
   const variants = resolveVariants(child, sharedComponents);
   const variantCount = variants.length;
   const legoType = resolveLegoType(child, sharedComponents);
+  const childPreview = getComponentPreviewLabels(variants, child.activeVariantId);
   const canDrag = isSelected && !isEmbeddedSharedChild(child);
 
   return (
@@ -352,6 +360,8 @@ function ChildBlock({
         <ComponentPreview
           type={legoType}
           data={variant.data}
+          title={childPreview.title}
+          variantName={childPreview.variantName}
           componentBadge={
             isEmbeddedSharedChild(child)
               ? "sub-component"

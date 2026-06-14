@@ -57,7 +57,7 @@ export function Toolbar() {
     <header className="flex shrink-0 flex-col border-b border-zinc-800 bg-zinc-950/90 backdrop-blur">
       <div className="flex h-12 items-center gap-2 px-3">
         <span className="pr-2 text-sm font-semibold tracking-tight text-zinc-100">
-          Appmap
+          AppMap
         </span>
 
         <div className="h-5 w-px bg-zinc-700" />

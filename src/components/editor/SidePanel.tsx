@@ -11,6 +11,7 @@ import {
   canConvertToShared,
   CHILD_COMPONENT_TYPES,
   COMPONENT_META,
+  getComponentPreviewLabels,
   instanceCountForShared,
   isEmbeddedSharedChild,
   isPageSection,
@@ -31,6 +32,8 @@ export function SidePanel() {
     actionCards,
     selection,
     sidePanelOpen,
+    sidePanelMinimized,
+    setSidePanelMinimized,
     updateView,
     deleteView,
     updateComponent,
@@ -65,6 +68,34 @@ export function SidePanel() {
 
   if (!sidePanelOpen) return null;
 
+  if (sidePanelMinimized) {
+    return (
+      <aside className="flex w-11 shrink-0 flex-col items-center border-l border-zinc-800 bg-zinc-950 py-3">
+        <button
+          type="button"
+          onClick={() => setSidePanelMinimized(false)}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-zinc-100"
+          aria-label="Expand inspector"
+        >
+          <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
+            <path
+              fill="currentColor"
+              d="M10.5 4.5 6 8l4.5 3.5V4.5z"
+            />
+          </svg>
+        </button>
+        <span
+          className="mt-4 text-[10px] font-semibold uppercase tracking-widest text-zinc-500 [writing-mode:vertical-rl]"
+          aria-hidden
+        >
+          Inspector
+        </span>
+      </aside>
+    );
+  }
+
+  const minimizeInspector = () => setSidePanelMinimized(true);
+
   const selectedView =
     selection?.kind === "view"
       ? views.find((v) => v.id === selection.id)
@@ -92,7 +123,7 @@ export function SidePanel() {
   if (!selection) {
     return (
       <aside className="flex w-80 shrink-0 flex-col border-l border-zinc-800 bg-zinc-950">
-        <PanelHeader title="Inspector" />
+        <PanelHeader title="Inspector" onMinimize={minimizeInspector} />
         <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-zinc-500">
           Select a view or lego on the canvas to edit its data
         </div>
@@ -103,7 +134,7 @@ export function SidePanel() {
   if (selectedView) {
     return (
       <aside className="flex w-80 shrink-0 flex-col border-l border-zinc-800 bg-zinc-950">
-        <PanelHeader title="View" />
+        <PanelHeader title="View" onMinimize={minimizeInspector} />
         <div className="flex-1 overflow-y-auto p-4">
           <Field label="Screen name">
             <input
@@ -158,6 +189,10 @@ export function SidePanel() {
     const legoType = resolveLegoType(selectedComponent, sharedComponents);
     const meta = COMPONENT_META[legoType];
     const allVariants = resolveVariants(selectedComponent, sharedComponents);
+    const previewLabels = getComponentPreviewLabels(
+      allVariants,
+      selectedComponent.activeVariantId
+    );
     const linked = isSharedInstance(selectedComponent);
     const embedded = isEmbeddedSharedChild(selectedComponent);
     const sharedDef = linked
@@ -178,6 +213,7 @@ export function SidePanel() {
                 ? `Component · ${instanceCount} instance${instanceCount === 1 ? "" : "s"}`
                 : parentView?.name
           }
+          onMinimize={minimizeInspector}
         />
         <div className="flex-1 overflow-y-auto p-4">
           {embedded && sharedDef ? (
@@ -255,6 +291,8 @@ export function SidePanel() {
             <ComponentPreview
               type={legoType}
               data={variant.data}
+              title={previewLabels.title}
+              variantName={previewLabels.variantName}
               componentBadge={
                 embedded ? "sub-component" : linked ? "component" : undefined
               }
@@ -275,8 +313,10 @@ export function SidePanel() {
             onUpdateVariantName={(id, name) =>
               updateVariant(selectedComponent.id, id, { name })
             }
-            onUpdateTitle={(id, title) =>
-              updateVariantData(selectedComponent.id, id, { title })
+            onUpdateTitle={(title) =>
+              updateVariantData(selectedComponent.id, selectedComponent.activeVariantId, {
+                title,
+              })
             }
             onUpdateDescription={(id, description) =>
               updateVariantData(selectedComponent.id, id, { description })
@@ -326,6 +366,7 @@ export function SidePanel() {
         <PanelHeader
           title="Component"
           subtitle={`${meta.label} · ${instanceCount} instance${instanceCount === 1 ? "" : "s"}`}
+          onMinimize={minimizeInspector}
         />
         <div className="flex-1 overflow-y-auto p-4">
           <Field label="Component name">
@@ -351,8 +392,12 @@ export function SidePanel() {
             onUpdateVariantName={(id, name) =>
               updateSharedVariant(selectedShared.id, id, { name })
             }
-            onUpdateTitle={(id, title) =>
-              updateSharedVariantData(selectedShared.id, id, { title })
+            onUpdateTitle={(title) =>
+              updateSharedVariantData(
+                selectedShared.id,
+                selectedShared.variants[0]?.id ?? "",
+                { title }
+              )
             }
             onUpdateDescription={(id, description) =>
               updateSharedVariantData(selectedShared.id, id, { description })
@@ -389,8 +434,11 @@ export function SidePanel() {
     const sourceComponent = components.find(
       (c) => c.id === selectedAction.sourceComponentId
     );
-    const sourceVariant = sourceComponent
-      ? getActiveVariant(sourceComponent, sharedComponents)
+    const sourceVariants = sourceComponent
+      ? resolveVariants(sourceComponent, sharedComponents)
+      : [];
+    const sourcePreview = sourceComponent
+      ? getComponentPreviewLabels(sourceVariants, sourceComponent.activeVariantId)
       : null;
     const sourceView = sourceComponent
       ? views.find((v) => v.id === sourceComponent.viewId)
@@ -399,7 +447,11 @@ export function SidePanel() {
 
     return (
       <aside className="flex w-80 shrink-0 flex-col border-l border-zinc-800 bg-zinc-950">
-        <PanelHeader title="Action Card" subtitle="Section Item → View" />
+        <PanelHeader
+          title="Action Card"
+          subtitle="Section Item → View"
+          onMinimize={minimizeInspector}
+        />
         <div className="flex-1 overflow-y-auto p-4">
           <div className="mb-4 flex justify-center rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
             <div className="flex items-center gap-2 rounded-full border border-emerald-700/60 bg-zinc-900 px-4 py-2">
@@ -412,7 +464,7 @@ export function SidePanel() {
 
           <Field label="From section item">
             <div className="rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-300">
-              {sourceVariant?.data.title ?? "Unknown section item"}
+              {sourcePreview?.title ?? "Unknown section item"}
               {sourceView ? (
                 <span className="mt-0.5 block text-xs text-zinc-500">
                   in {sourceView.name}
@@ -443,7 +495,7 @@ export function SidePanel() {
 
           {sourceView && targetView ? (
             <p className="mb-4 text-xs text-zinc-500">
-              {sourceVariant?.data.title} ({sourceView.name}) → {targetView.name}
+              {sourcePreview?.title} ({sourceView.name}) → {targetView.name}
             </p>
           ) : null}
 
@@ -533,15 +585,34 @@ export function SidePanel() {
 function PanelHeader({
   title,
   subtitle,
+  onMinimize,
 }: {
   title: string;
   subtitle?: string;
+  onMinimize?: () => void;
 }) {
   return (
-    <div className="border-b border-zinc-800 px-4 py-3">
-      <p className="text-sm font-semibold text-zinc-100">{title}</p>
-      {subtitle ? (
-        <p className="text-xs text-zinc-500">{subtitle}</p>
+    <div className="flex items-start justify-between gap-2 border-b border-zinc-800 px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-zinc-100">{title}</p>
+        {subtitle ? (
+          <p className="text-xs text-zinc-500">{subtitle}</p>
+        ) : null}
+      </div>
+      {onMinimize ? (
+        <button
+          type="button"
+          onClick={onMinimize}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-zinc-100"
+          aria-label="Minimize inspector"
+        >
+          <svg viewBox="0 0 16 16" className="h-4 w-4" aria-hidden>
+            <path
+              fill="currentColor"
+              d="M5.5 4.5 10 8l-4.5 3.5V4.5z"
+            />
+          </svg>
+        </button>
       ) : null}
     </div>
   );
@@ -564,7 +635,7 @@ function SharedVariantEditor({
   onAddVariant: () => void;
   onDeleteVariant: (id: string) => void;
   onUpdateVariantName: (id: string, name: string) => void;
-  onUpdateTitle: (id: string, title: string) => void;
+  onUpdateTitle: (title: string) => void;
   onUpdateDescription: (id: string, description: string) => void;
   onAddField: (variantId: string) => void;
   onUpdateField: (variantId: string, index: number, value: string) => void;
@@ -572,6 +643,7 @@ function SharedVariantEditor({
 }) {
   const [activeId, setActiveId] = useState(shared.variants[0]?.id ?? "");
   const variant = shared.variants.find((v) => v.id === activeId) ?? shared.variants[0];
+  const previewLabels = getComponentPreviewLabels(shared.variants, activeId);
 
   if (!variant) return null;
 
@@ -584,6 +656,8 @@ function SharedVariantEditor({
         <ComponentPreview
           type={shared.legoType}
           data={variant.data}
+          title={previewLabels.title}
+          variantName={previewLabels.variantName}
           componentBadge="component"
         />
       </div>
@@ -658,7 +732,7 @@ function VariantEditor({
   onAddVariant: () => void;
   onDeleteVariant: (id: string) => void;
   onUpdateVariantName: (id: string, name: string) => void;
-  onUpdateTitle: (id: string, title: string) => void;
+  onUpdateTitle: (title: string) => void;
   onUpdateDescription: (id: string, description: string) => void;
   onAddField: (variantId: string) => void;
   onUpdateField: (variantId: string, index: number, value: string) => void;
@@ -666,6 +740,7 @@ function VariantEditor({
 }) {
   const [localActiveId, setLocalActiveId] = useState(activeVariantId);
   const variant = variants.find((v) => v.id === localActiveId) ?? variants[0];
+  const sharedTitle = variants[0]?.data.title ?? "";
 
   if (!variant) return null;
 
@@ -718,8 +793,8 @@ function VariantEditor({
         <Field label="Title">
           <input
             type="text"
-            value={variant.data.title}
-            onChange={(e) => onUpdateTitle(variant.id, e.target.value)}
+            value={sharedTitle}
+            onChange={(e) => onUpdateTitle(e.target.value)}
             className={inputClass}
           />
         </Field>

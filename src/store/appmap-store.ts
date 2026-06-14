@@ -48,6 +48,7 @@ interface AppMapStore {
   selection: Selection;
   canvas: CanvasTransform;
   sidePanelOpen: boolean;
+  sidePanelMinimized: boolean;
   dbSync: DbSyncStatus;
 
   setDbSync: (status: DbSyncStatus) => void;
@@ -55,6 +56,7 @@ interface AppMapStore {
   select: (selection: Selection) => void;
   clearSelection: () => void;
   setSidePanelOpen: (open: boolean) => void;
+  setSidePanelMinimized: (minimized: boolean) => void;
 
   addView: (name?: string) => string;
   updateView: (id: string, patch: Partial<View>) => void;
@@ -349,6 +351,7 @@ export const useAppMapStore = create<AppMapStore>()(
       selection: null,
       canvas: { x: 0, y: 0, zoom: 1 },
       sidePanelOpen: true,
+      sidePanelMinimized: false,
       dbSync: "idle",
 
       setDbSync: (status) => set({ dbSync: status }),
@@ -356,9 +359,15 @@ export const useAppMapStore = create<AppMapStore>()(
       setCanvas: (canvas) =>
         set((s) => ({ canvas: { ...s.canvas, ...canvas } })),
 
-      select: (selection) => set({ selection, sidePanelOpen: true }),
+      select: (selection) =>
+        set({ selection, sidePanelOpen: true, sidePanelMinimized: false }),
       clearSelection: () => set({ selection: null }),
-      setSidePanelOpen: (open) => set({ sidePanelOpen: open }),
+      setSidePanelOpen: (open) =>
+        set({
+          sidePanelOpen: open,
+          ...(open ? { sidePanelMinimized: false } : {}),
+        }),
+      setSidePanelMinimized: (minimized) => set({ sidePanelMinimized: minimized }),
 
       addView: (name) => {
         const id = crypto.randomUUID();
@@ -1228,11 +1237,15 @@ export const useAppMapStore = create<AppMapStore>()(
       updateVariantData: (componentId, variantId, patch) =>
         set((s) => {
           const patched = patchComponentVariants(s, componentId, (variants) =>
-            variants.map((v) =>
-              v.id === variantId
-                ? { ...v, data: { ...v.data, ...patch } }
-                : v
-            )
+            variants.map((v) => {
+              if (patch.title !== undefined) {
+                return { ...v, data: { ...v.data, title: patch.title! } };
+              }
+              if (v.id === variantId) {
+                return { ...v, data: { ...v.data, ...patch } };
+              }
+              return v;
+            })
           );
           if (!patched) return s;
 
@@ -1356,11 +1369,15 @@ export const useAppMapStore = create<AppMapStore>()(
             s.sharedComponents,
             sharedId,
             (variants) =>
-              variants.map((v) =>
-                v.id === variantId
-                  ? { ...v, data: { ...v.data, ...patch } }
-                  : v
-              )
+              variants.map((v) => {
+                if (patch.title !== undefined) {
+                  return { ...v, data: { ...v.data, title: patch.title! } };
+                }
+                if (v.id === variantId) {
+                  return { ...v, data: { ...v.data, ...patch } };
+                }
+                return v;
+              })
           ).map((sc) =>
             sc.id === sharedId && patch.title
               ? { ...sc, name: patch.title! }

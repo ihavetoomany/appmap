@@ -203,6 +203,17 @@ export function resolveVariants(
   return shared?.variants ?? c.variants;
 }
 
+/** Shared title across variants; variant name as optional subtitle when >1 variant. */
+export function getComponentPreviewLabels(
+  variants: ComponentVariant[],
+  activeVariantId: string
+): { title: string; variantName?: string } {
+  const active = variants.find((v) => v.id === activeVariantId) ?? variants[0];
+  const title = variants[0]?.data.title ?? active?.data.title ?? "";
+  const variantName = variants.length > 1 ? active?.name : undefined;
+  return { title, variantName };
+}
+
 export function instanceCountForShared(
   sharedId: string,
   components: MapComponent[]

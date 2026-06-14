@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Appmap",
+  title: "AppMap",
   description: "Infinite canvas app map editor with views, section items, and variants",
 };
 

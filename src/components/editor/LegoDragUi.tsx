@@ -8,10 +8,12 @@ import {
   useAppMapStore,
 } from "@/store/appmap-store";
 import {
+  getComponentPreviewLabels,
   isEmbeddedSharedChild,
   isSharedInstance,
   isSharedPageSectionInstance,
   resolveLegoType,
+  resolveVariants,
 } from "@/types/appmap";
 import { ComponentPreview } from "./ComponentPreview";
 
@@ -306,6 +308,11 @@ export function SectionDragPreview() {
   if (!section) return null;
 
   const variant = getActiveVariant(section, sharedComponents);
+  const sectionVariants = resolveVariants(section, sharedComponents);
+  const sectionPreview = getComponentPreviewLabels(
+    sectionVariants,
+    section.activeVariantId
+  );
   const children = childrenInSection(components, section.id);
 
   return (
@@ -321,6 +328,8 @@ export function SectionDragPreview() {
         <ComponentPreview
           type={resolveLegoType(section, sharedComponents)}
           data={variant.data}
+          title={sectionPreview.title}
+          variantName={sectionPreview.variantName}
           componentBadge={isSharedInstance(section) ? "component" : undefined}
         />
       </div>
@@ -328,11 +337,18 @@ export function SectionDragPreview() {
         <div className="flex flex-col gap-1.5 px-2 pb-2 pt-1">
           {children.map((child) => {
             const childVariant = getActiveVariant(child, sharedComponents);
+            const childVariants = resolveVariants(child, sharedComponents);
+            const childPreview = getComponentPreviewLabels(
+              childVariants,
+              child.activeVariantId
+            );
             return (
               <ComponentPreview
                 key={child.id}
                 type={resolveLegoType(child, sharedComponents)}
                 data={childVariant.data}
+                title={childPreview.title}
+                variantName={childPreview.variantName}
                 componentBadge={
                   isEmbeddedSharedChild(child)
                     ? "sub-component"
@@ -362,6 +378,11 @@ export function ChildDragPreview() {
   if (!child) return null;
 
   const variant = getActiveVariant(child, sharedComponents);
+  const childVariants = resolveVariants(child, sharedComponents);
+  const childPreview = getComponentPreviewLabels(
+    childVariants,
+    child.activeVariantId
+  );
 
   return (
     <div
@@ -375,6 +396,8 @@ export function ChildDragPreview() {
       <ComponentPreview
         type={resolveLegoType(child, sharedComponents)}
         data={variant.data}
+        title={childPreview.title}
+        variantName={childPreview.variantName}
         componentBadge={
           isEmbeddedSharedChild(child)
             ? "sub-component"
