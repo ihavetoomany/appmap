@@ -1,8 +1,14 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import {
+  clampCanvasZoom,
+  wheelDeltaToZoomFactor,
+  zoomCanvasAtPoint,
+} from "@/lib/canvas-geometry";
 import { CanvasLayerProvider, LegoDragProvider } from "@/lib/canvas-layer";
 import { useAppMapStore } from "@/store/appmap-store";
+import { CanvasOverlayLayer } from "./CanvasOverlays";
 import { ActionCardLayer } from "./ActionCardNode";
 import { ConnectionLines } from "./ConnectionLines";
 import { ChildDragPreview, SectionDragPreview } from "./LegoDragUi";
@@ -18,18 +24,32 @@ export function InfiniteCanvas() {
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.preventDefault();
+      const current = useAppMapStore.getState().canvas;
+
       if (e.ctrlKey || e.metaKey) {
-        const delta = -e.deltaY * 0.001;
-        const nextZoom = Math.min(2, Math.max(0.25, canvas.zoom + delta));
-        setCanvas({ zoom: nextZoom });
+        const el = canvasRef.current;
+        if (!el) return;
+
+        const rect = el.getBoundingClientRect();
+        const anchorX = e.clientX - rect.left;
+        const anchorY = e.clientY - rect.top;
+        const nextZoom = clampCanvasZoom(
+          current.zoom * wheelDeltaToZoomFactor(e.deltaY, e.deltaMode)
+        );
+
+        if (nextZoom === current.zoom) return;
+
+        setCanvas(
+          zoomCanvasAtPoint(current, nextZoom, anchorX, anchorY)
+        );
       } else {
         setCanvas({
-          x: canvas.x - e.deltaX,
-          y: canvas.y - e.deltaY,
+          x: current.x - e.deltaX,
+          y: current.y - e.deltaY,
         });
       }
     },
-    [canvas, setCanvas]
+    [setCanvas]
   );
 
   const startPan = useCallback(
@@ -89,6 +109,7 @@ export function InfiniteCanvas() {
   return (
     <div
       ref={canvasRef}
+      data-canvas-viewport
       className="relative h-full w-full overflow-hidden bg-zinc-950"
       style={{
         cursor: isPanning ? "grabbing" : "default",
@@ -117,6 +138,7 @@ export function InfiniteCanvas() {
                 Add a View to start mapping your app
               </div>
             ) : null}
+            <CanvasOverlayLayer zoom={canvas.zoom} />
             <ConnectionLines />
             {views.map((view) => (
               <ViewFrame key={view.id} view={view} zoom={canvas.zoom} />
@@ -130,7 +152,7 @@ export function InfiniteCanvas() {
 
       <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-500 shadow-sm backdrop-blur">
         Scroll to pan · ⌘/Ctrl + scroll to zoom · Alt + drag to pan · ↑↓
-        to reorder · Drag page sections or section items between targets
+        to reorder · + Text for canvas labels
       </div>
     </div>
   );

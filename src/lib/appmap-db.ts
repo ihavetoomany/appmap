@@ -32,16 +32,23 @@ export async function ensureAppMapSchema(): Promise<void> {
 
 function parseSnapshot(raw: unknown): AppMapSnapshot {
   if (!raw || typeof raw !== "object") return { ...EMPTY_APP_MAP_SNAPSHOT };
-  const data = raw as Partial<AppMapSnapshot>;
-  return {
+  const data = raw as Record<string, unknown>;
+  return migrateAppMapSnapshot({
     views: Array.isArray(data.views) ? data.views : [],
     components: Array.isArray(data.components) ? data.components : [],
     sharedComponents: Array.isArray(data.sharedComponents)
       ? data.sharedComponents
       : [],
     actionCards: Array.isArray(data.actionCards) ? data.actionCards : [],
-    canvas: data.canvas ?? EMPTY_APP_MAP_SNAPSHOT.canvas,
-  };
+    canvasTitles: Array.isArray(data.canvasTitles) ? data.canvasTitles : [],
+    canvasNotes: Array.isArray(data.canvasNotes) ? data.canvasNotes : [],
+    canvas:
+      typeof data.canvas === "object" && data.canvas !== null
+        ? (data.canvas as AppMapSnapshot["canvas"])
+        : EMPTY_APP_MAP_SNAPSHOT.canvas,
+    canvasLabels: data.canvasLabels,
+    canvasRegions: data.canvasRegions,
+  });
 }
 
 export async function loadAppMapFromDb(): Promise<{
@@ -63,7 +70,7 @@ export async function loadAppMapFromDb(): Promise<{
   }
 
   return {
-    data: migrateAppMapSnapshot(parseSnapshot(row.data)),
+    data: parseSnapshot(row.data),
     updatedAt: new Date(row.updated_at).toISOString(),
   };
 }

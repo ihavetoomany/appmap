@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { loadAppMapFromDb, saveAppMapToDb } from "@/lib/appmap-db";
 import {
   EMPTY_APP_MAP_SNAPSHOT,
+  migrateAppMapSnapshot,
   type AppMapSnapshot,
+  type AppMapSnapshotInput,
 } from "@/types/appmap-persist";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +20,10 @@ function isValidSnapshot(body: unknown): body is AppMapSnapshot {
     typeof data.canvas === "object" &&
     data.canvas !== null
   );
+}
+
+function normalizeSnapshot(body: AppMapSnapshot): AppMapSnapshot {
+  return migrateAppMapSnapshot(body as AppMapSnapshotInput);
 }
 
 export async function GET() {
@@ -43,7 +49,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    const updatedAt = await saveAppMapToDb(body.data);
+    const updatedAt = await saveAppMapToDb(normalizeSnapshot(body.data));
     return NextResponse.json({ ok: true, updatedAt });
   } catch (error) {
     console.error("PUT /api/map failed:", error);

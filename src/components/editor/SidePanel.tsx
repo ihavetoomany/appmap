@@ -11,7 +11,15 @@ import {
   canConvertToShared,
   CHILD_COMPONENT_TYPES,
   COMPONENT_META,
+  CANVAS_NOTE_COLORS,
+  CANVAS_NOTE_DEFAULT_WIDTH,
+  CANVAS_NOTE_DEFAULT_HEIGHT,
+  CANVAS_NOTE_MIN_HEIGHT,
+  CANVAS_NOTE_MIN_WIDTH,
+  CANVAS_TITLE_META,
+  sanitizeCanvasTitleText,
   getComponentPreviewLabels,
+  type CanvasNoteColor,
   instanceCountForShared,
   isEmbeddedSharedChild,
   isPageSection,
@@ -34,8 +42,14 @@ export function SidePanel() {
     sidePanelOpen,
     sidePanelMinimized,
     setSidePanelMinimized,
+    canvasTitles,
+    canvasNotes,
     updateView,
     deleteView,
+    updateCanvasTitle,
+    deleteCanvasTitle,
+    updateCanvasNote,
+    deleteCanvasNote,
     updateComponent,
     deleteComponent,
     convertToSharedComponent,
@@ -114,6 +128,16 @@ export function SidePanel() {
   const selectedShared =
     selection?.kind === "shared-component"
       ? sharedComponents.find((s) => s.id === selection.id)
+      : null;
+
+  const selectedCanvasTitle =
+    selection?.kind === "canvas-title"
+      ? canvasTitles.find((title) => title.id === selection.id)
+      : null;
+
+  const selectedCanvasNote =
+    selection?.kind === "canvas-note"
+      ? canvasNotes.find((note) => note.id === selection.id)
       : null;
 
   const parentView = selectedComponent
@@ -574,6 +598,143 @@ export function SidePanel() {
         <PanelFooter
           onDelete={() => deleteActionCard(selectedAction.id)}
           deleteLabel="Delete action card"
+        />
+      </aside>
+    );
+  }
+
+  if (selectedCanvasTitle) {
+    return (
+      <aside className="flex w-80 shrink-0 flex-col border-l border-zinc-800 bg-zinc-950">
+        <PanelHeader
+          title="Title"
+          subtitle="Large one-line heading"
+          onMinimize={minimizeInspector}
+        />
+        <div className="flex-1 overflow-y-auto p-4">
+          <Field label="Title">
+            <input
+              type="text"
+              value={selectedCanvasTitle.text}
+              onChange={(e) =>
+                updateCanvasTitle(selectedCanvasTitle.id, {
+                  text: sanitizeCanvasTitleText(e.target.value),
+                })
+              }
+              className={inputClass}
+              placeholder="Title"
+            />
+          </Field>
+          <Field label="Width">
+            <input
+              type="number"
+              value={selectedCanvasTitle.width}
+              onChange={(e) =>
+                updateCanvasTitle(selectedCanvasTitle.id, {
+                  width: Math.max(
+                    200,
+                    Number(e.target.value) || CANVAS_TITLE_META.defaultWidth
+                  ),
+                })
+              }
+              className={inputClass}
+            />
+          </Field>
+          <p className="mt-2 text-xs text-zinc-500">
+            Single line only. Drag anywhere on the title to reposition it.
+          </p>
+        </div>
+        <PanelFooter
+          onDelete={() => deleteCanvasTitle(selectedCanvasTitle.id)}
+          deleteLabel="Delete title"
+        />
+      </aside>
+    );
+  }
+
+  if (selectedCanvasNote) {
+    return (
+      <aside className="flex w-80 shrink-0 flex-col border-l border-zinc-800 bg-zinc-950">
+        <PanelHeader
+          title="Note"
+          subtitle="Sticky note on the canvas"
+          onMinimize={minimizeInspector}
+        />
+        <div className="flex-1 overflow-y-auto p-4">
+          <Field label="Text">
+            <textarea
+              value={selectedCanvasNote.text}
+              onChange={(e) =>
+                updateCanvasNote(selectedCanvasNote.id, { text: e.target.value })
+              }
+              rows={6}
+              className={inputClass}
+              placeholder="Write a note…"
+            />
+          </Field>
+          <Field label="Color">
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(CANVAS_NOTE_COLORS) as CanvasNoteColor[]).map(
+                (color) => {
+                  const meta = CANVAS_NOTE_COLORS[color];
+                  const active = selectedCanvasNote.color === color;
+                  return (
+                    <button
+                      key={color}
+                      type="button"
+                      aria-label={meta.label}
+                      aria-pressed={active}
+                      onClick={() =>
+                        updateCanvasNote(selectedCanvasNote.id, { color })
+                      }
+                      className={`h-8 w-8 rounded-lg border-2 transition-transform ${meta.surface} ${meta.border} ${
+                        active
+                          ? "scale-110 border-white/70 ring-2 ring-blue-500/40"
+                          : "hover:scale-105"
+                      }`}
+                    />
+                  );
+                }
+              )}
+            </div>
+          </Field>
+          <Field label="Width">
+            <input
+              type="number"
+              value={selectedCanvasNote.width}
+              onChange={(e) =>
+                updateCanvasNote(selectedCanvasNote.id, {
+                  width: Math.max(
+                    CANVAS_NOTE_MIN_WIDTH,
+                    Number(e.target.value) || CANVAS_NOTE_DEFAULT_WIDTH
+                  ),
+                })
+              }
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Height">
+            <input
+              type="number"
+              value={selectedCanvasNote.height}
+              onChange={(e) =>
+                updateCanvasNote(selectedCanvasNote.id, {
+                  height: Math.max(
+                    CANVAS_NOTE_MIN_HEIGHT,
+                    Number(e.target.value) || CANVAS_NOTE_DEFAULT_HEIGHT
+                  ),
+                })
+              }
+              className={inputClass}
+            />
+          </Field>
+          <p className="mt-2 text-xs text-zinc-500">
+            Drag the top bar to move. Pull the corner handle to resize.
+          </p>
+        </div>
+        <PanelFooter
+          onDelete={() => deleteCanvasNote(selectedCanvasNote.id)}
+          deleteLabel="Delete note"
         />
       </aside>
     );

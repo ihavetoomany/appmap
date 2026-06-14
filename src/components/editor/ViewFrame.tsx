@@ -11,7 +11,6 @@ import {
 import type { MapComponent, View } from "@/types/appmap";
 import { isEmbeddedSharedChild, isSharedInstance, isSharedPageSectionInstance, getComponentPreviewLabels, resolveLegoType, resolveVariants } from "@/types/appmap";
 import { ComponentPreview } from "./ComponentPreview";
-import { LegoIcon } from "./LegoIcon";
 import {
   ChildDragSurface,
   ReorderControls,
@@ -215,10 +214,12 @@ function PageSectionBlock({
       enabled={isSelected}
       sectionId={section.id}
       sourceViewId={viewId}
-      className={`rounded-lg border bg-zinc-900/40 transition-opacity ${
+      className={`relative overflow-hidden rounded-xl border-2 transition-[opacity,box-shadow,border-color] ${
         isDragging ? "opacity-0" : ""
       } ${
-        isSelected ? "border-amber-500/40 ring-2 ring-amber-500/20" : "border-zinc-800"
+        isSelected
+          ? "border-amber-500/55 bg-amber-500/10 shadow-md shadow-amber-500/10 ring-2 ring-amber-500/25"
+          : "border-amber-500/35 bg-amber-500/[0.08] shadow-sm shadow-black/25"
       }`}
     >
       <div
@@ -254,15 +255,19 @@ function PageSectionBlock({
         sectionId={section.id}
         active={showChildDrop}
         droppable={acceptsChildDrop}
-        className={`flex flex-col gap-1.5 rounded-md px-2 pb-2 pt-1 transition-colors ${
-          showChildDrop ? "bg-blue-500/10 ring-2 ring-blue-500/30" : ""
+        className={`mx-2 mb-2 flex flex-col gap-1.5 rounded-lg border border-dashed px-2 pb-2 pt-1.5 transition-colors ${
+          showChildDrop
+            ? "border-blue-500/50 bg-blue-500/10 ring-2 ring-blue-500/30"
+            : children.length > 0
+              ? "border-amber-500/20 bg-zinc-950/70"
+              : "border-amber-500/15 bg-zinc-950/50"
         }`}
       >
         {children.length === 0 ? (
-          <p className="py-3 text-center text-[11px] text-zinc-600">
+          <p className="py-3 text-center text-[11px] text-zinc-500">
             {showChildDrop
               ? "Drop section item here"
-              : "Add section items inside this section"}
+              : "Section items appear inside this area"}
           </p>
         ) : (
           children.map((child, childIndex) => (
@@ -338,7 +343,11 @@ function ChildBlock({
       sourceViewId={viewId}
       className={`relative w-full rounded-lg transition-opacity ${
         isDragging ? "opacity-0" : ""
-      } ${isSelected ? "ring-2 ring-blue-500/40" : ""}`}
+      } ${
+        isSelected
+          ? "ring-2 ring-blue-500/40"
+          : "ring-1 ring-zinc-700/80 ring-inset"
+      }`}
     >
       <div
         data-canvas-item

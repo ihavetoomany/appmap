@@ -1,6 +1,11 @@
 "use client";
 
 import { useAppMapStore } from "@/store/appmap-store";
+import {
+  CANVAS_TOOLBAR_ZOOM_FACTOR,
+  clampCanvasZoom,
+  zoomCanvasAtPoint,
+} from "@/lib/canvas-geometry";
 import type { DbSyncStatus } from "@/store/appmap-store";
 import {
   canBeActionSource,
@@ -18,6 +23,8 @@ export function Toolbar() {
     sharedComponents,
     canvas,
     addView,
+    addCanvasTitle,
+    addCanvasNote,
     addPageSection,
     addChildComponent,
     addSharedInstance,
@@ -53,6 +60,16 @@ export function Toolbar() {
     selectedComponent !== undefined &&
     canBeActionSource(selectedComponent);
 
+  const zoomFromToolbar = (factor: number) => {
+    const viewport = document.querySelector("[data-canvas-viewport]");
+    const rect = viewport?.getBoundingClientRect();
+    const anchorX = rect ? rect.width / 2 : window.innerWidth / 2;
+    const anchorY = rect ? rect.height / 2 : window.innerHeight / 2;
+    const nextZoom = clampCanvasZoom(canvas.zoom * factor);
+    if (nextZoom === canvas.zoom) return;
+    setCanvas(zoomCanvasAtPoint(canvas, nextZoom, anchorX, anchorY));
+  };
+
   return (
     <header className="flex shrink-0 flex-col border-b border-zinc-800 bg-zinc-950/90 backdrop-blur">
       <div className="flex h-12 items-center gap-2 px-3">
@@ -69,6 +86,24 @@ export function Toolbar() {
         >
           + View
         </button>
+
+        <button
+          type="button"
+          onClick={() => addCanvasTitle()}
+          className="shrink-0 rounded-lg border border-zinc-700 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:bg-zinc-900"
+        >
+          + Title
+        </button>
+
+        <button
+          type="button"
+          onClick={() => addCanvasNote()}
+          className="shrink-0 rounded-lg border border-zinc-700 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:border-zinc-500 hover:bg-zinc-900"
+        >
+          + Note
+        </button>
+
+        <div className="h-5 w-px bg-zinc-700" />
 
         {targetViewId ? (
           <button
@@ -117,7 +152,7 @@ export function Toolbar() {
           <DbSyncIndicator status={dbSync} />
           <button
             type="button"
-            onClick={() => setCanvas({ zoom: Math.max(0.25, canvas.zoom - 0.1) })}
+            onClick={() => zoomFromToolbar(1 / CANVAS_TOOLBAR_ZOOM_FACTOR)}
             className="rounded-lg px-2 py-1.5 text-xs text-zinc-400 hover:bg-zinc-900"
             aria-label="Zoom out"
           >
@@ -128,7 +163,7 @@ export function Toolbar() {
           </span>
           <button
             type="button"
-            onClick={() => setCanvas({ zoom: Math.min(2, canvas.zoom + 0.1) })}
+            onClick={() => zoomFromToolbar(CANVAS_TOOLBAR_ZOOM_FACTOR)}
             className="rounded-lg px-2 py-1.5 text-xs text-zinc-400 hover:bg-zinc-900"
             aria-label="Zoom in"
           >

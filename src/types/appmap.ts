@@ -83,11 +83,109 @@ export interface CanvasTransform {
   zoom: number;
 }
 
+/** Large one-line title on the canvas. */
+export interface CanvasTitle {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+}
+
+export type CanvasNoteColor =
+  | "amber"
+  | "rose"
+  | "sky"
+  | "lime"
+  | "violet"
+  | "slate";
+
+/** Semi-transparent sticky note on the canvas. */
+export interface CanvasNote {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: CanvasNoteColor;
+}
+
+export const CANVAS_TITLE_META = {
+  className: "text-4xl font-bold tracking-tight text-zinc-50",
+  defaultWidth: 480,
+} as const;
+
+export const CANVAS_NOTE_COLORS: Record<
+  CanvasNoteColor,
+  {
+    label: string;
+    surface: string;
+    border: string;
+    text: string;
+    topbar: string;
+  }
+> = {
+  amber: {
+    label: "Amber",
+    surface: "bg-amber-300/20",
+    border: "border-amber-300/40",
+    text: "text-amber-50",
+    topbar: "bg-amber-400/30 border-amber-300/35",
+  },
+  rose: {
+    label: "Rose",
+    surface: "bg-rose-300/20",
+    border: "border-rose-300/40",
+    text: "text-rose-50",
+    topbar: "bg-rose-400/30 border-rose-300/35",
+  },
+  sky: {
+    label: "Sky",
+    surface: "bg-sky-300/20",
+    border: "border-sky-300/40",
+    text: "text-sky-50",
+    topbar: "bg-sky-400/30 border-sky-300/35",
+  },
+  lime: {
+    label: "Lime",
+    surface: "bg-lime-300/20",
+    border: "border-lime-300/40",
+    text: "text-lime-50",
+    topbar: "bg-lime-400/30 border-lime-300/35",
+  },
+  violet: {
+    label: "Violet",
+    surface: "bg-violet-300/20",
+    border: "border-violet-300/40",
+    text: "text-violet-50",
+    topbar: "bg-violet-400/30 border-violet-300/35",
+  },
+  slate: {
+    label: "Slate",
+    surface: "bg-zinc-400/15",
+    border: "border-zinc-400/35",
+    text: "text-zinc-100",
+    topbar: "bg-zinc-500/25 border-zinc-400/30",
+  },
+};
+
+export const CANVAS_NOTE_DEFAULT_WIDTH = 220;
+export const CANVAS_NOTE_DEFAULT_HEIGHT = 140;
+export const CANVAS_NOTE_MIN_WIDTH = 140;
+export const CANVAS_NOTE_MIN_HEIGHT = 96;
+
+export function sanitizeCanvasTitleText(text: string): string {
+  return text.replace(/[\r\n]+/g, " ").trimStart();
+}
+
 export type Selection =
   | { kind: "view"; id: string }
   | { kind: "component"; id: string }
   | { kind: "shared-component"; id: string }
   | { kind: "action"; id: string }
+  | { kind: "canvas-title"; id: string }
+  | { kind: "canvas-note"; id: string }
   | null;
 
 export const CHILD_COMPONENT_TYPES: ChildComponentType[] = [

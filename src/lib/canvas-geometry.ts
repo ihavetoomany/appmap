@@ -115,6 +115,41 @@ export function midpointBetweenAnchors(
   };
 }
 
+export const CANVAS_MIN_ZOOM = 0.25;
+export const CANVAS_MAX_ZOOM = 2;
+/** Exponential wheel zoom — higher feels more responsive. */
+export const CANVAS_WHEEL_ZOOM_INTENSITY = 0.004;
+export const CANVAS_TOOLBAR_ZOOM_FACTOR = 1.2;
+
+export function clampCanvasZoom(zoom: number): number {
+  return Math.min(CANVAS_MAX_ZOOM, Math.max(CANVAS_MIN_ZOOM, zoom));
+}
+
+export function normalizeWheelDelta(deltaY: number, deltaMode: number): number {
+  if (deltaMode === 1) return deltaY * 16;
+  if (deltaMode === 2) return deltaY * window.innerHeight;
+  return deltaY;
+}
+
+export function wheelDeltaToZoomFactor(deltaY: number, deltaMode: number): number {
+  return Math.exp(-normalizeWheelDelta(deltaY, deltaMode) * CANVAS_WHEEL_ZOOM_INTENSITY);
+}
+
+export function zoomCanvasAtPoint(
+  canvas: { x: number; y: number; zoom: number },
+  nextZoom: number,
+  anchorX: number,
+  anchorY: number
+): { x: number; y: number; zoom: number } {
+  const worldX = (anchorX - canvas.x) / canvas.zoom;
+  const worldY = (anchorY - canvas.y) / canvas.zoom;
+  return {
+    zoom: nextZoom,
+    x: anchorX - worldX * nextZoom,
+    y: anchorY - worldY * nextZoom,
+  };
+}
+
 export function resolveSourceAnchor(
   action: ActionCard,
   views: View[],

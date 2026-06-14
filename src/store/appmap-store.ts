@@ -10,6 +10,8 @@ import {
 import {
   type ActionCard,
   type ActionCardVariant,
+  type CanvasNote,
+  type CanvasTitle,
   type CanvasTransform,
   type ChildComponentType,
   type ComponentData,
@@ -26,6 +28,10 @@ import {
   childrenInSection,
   defaultActionVariant,
   defaultDataForType,
+  CANVAS_NOTE_DEFAULT_WIDTH,
+  CANVAS_NOTE_DEFAULT_HEIGHT,
+  CANVAS_TITLE_META,
+  sanitizeCanvasTitleText,
   defaultVariant,
   findSharedComponent,
   isEmbeddedSharedChild,
@@ -45,6 +51,8 @@ interface AppMapStore {
   components: MapComponent[];
   sharedComponents: SharedComponent[];
   actionCards: ActionCard[];
+  canvasTitles: CanvasTitle[];
+  canvasNotes: CanvasNote[];
   selection: Selection;
   canvas: CanvasTransform;
   sidePanelOpen: boolean;
@@ -62,6 +70,16 @@ interface AppMapStore {
   updateView: (id: string, patch: Partial<View>) => void;
   deleteView: (id: string) => void;
   moveView: (id: string, x: number, y: number) => void;
+
+  addCanvasTitle: (text?: string) => string;
+  updateCanvasTitle: (id: string, patch: Partial<CanvasTitle>) => void;
+  moveCanvasTitle: (id: string, x: number, y: number) => void;
+  deleteCanvasTitle: (id: string) => void;
+
+  addCanvasNote: (text?: string) => string;
+  updateCanvasNote: (id: string, patch: Partial<CanvasNote>) => void;
+  moveCanvasNote: (id: string, x: number, y: number) => void;
+  deleteCanvasNote: (id: string) => void;
 
   addPageSection: (viewId: string) => string;
   addChildComponent: (pageSectionId: string, type: ChildComponentType) => string;
@@ -155,6 +173,22 @@ const DEFAULT_VIEW: Omit<View, "id"> = {
   y: 120,
   width: 320,
 };
+
+const DEFAULT_CANVAS_TITLE = (): Omit<CanvasTitle, "id"> => ({
+  text: "Title",
+  x: 200,
+  y: 160,
+  width: CANVAS_TITLE_META.defaultWidth,
+});
+
+const DEFAULT_CANVAS_NOTE = (): Omit<CanvasNote, "id"> => ({
+  text: "Note",
+  x: 240,
+  y: 200,
+  width: CANVAS_NOTE_DEFAULT_WIDTH,
+  height: CANVAS_NOTE_DEFAULT_HEIGHT,
+  color: "amber",
+});
 
 function cloneVariants(variants: ComponentVariant[]): ComponentVariant[] {
   return variants.map((v) => ({
@@ -348,6 +382,8 @@ export const useAppMapStore = create<AppMapStore>()(
       components: [],
       sharedComponents: [],
       actionCards: [],
+      canvasTitles: [],
+      canvasNotes: [],
       selection: null,
       canvas: { x: 0, y: 0, zoom: 1 },
       sidePanelOpen: true,
@@ -429,6 +465,100 @@ export const useAppMapStore = create<AppMapStore>()(
       moveView: (id, x, y) =>
         set((s) => ({
           views: s.views.map((v) => (v.id === id ? { ...v, x, y } : v)),
+        })),
+
+      addCanvasTitle: (text) => {
+        const id = crypto.randomUUID();
+        const count = get().canvasTitles.length + get().canvasNotes.length;
+        const defaults = DEFAULT_CANVAS_TITLE();
+        set((s) => ({
+          canvasTitles: [
+            ...s.canvasTitles,
+            {
+              ...defaults,
+              id,
+              text: text ? sanitizeCanvasTitleText(text) : defaults.text,
+              x: defaults.x + count * 36,
+              y: defaults.y + count * 36,
+            },
+          ],
+          selection: { kind: "canvas-title", id },
+        }));
+        return id;
+      },
+
+      updateCanvasTitle: (id, patch) =>
+        set((s) => ({
+          canvasTitles: s.canvasTitles.map((title) =>
+            title.id === id
+              ? {
+                  ...title,
+                  ...patch,
+                  ...(patch.text !== undefined
+                    ? { text: sanitizeCanvasTitleText(patch.text) }
+                    : {}),
+                }
+              : title
+          ),
+        })),
+
+      moveCanvasTitle: (id, x, y) =>
+        set((s) => ({
+          canvasTitles: s.canvasTitles.map((title) =>
+            title.id === id ? { ...title, x, y } : title
+          ),
+        })),
+
+      deleteCanvasTitle: (id) =>
+        set((s) => ({
+          canvasTitles: s.canvasTitles.filter((title) => title.id !== id),
+          selection:
+            s.selection?.kind === "canvas-title" && s.selection.id === id
+              ? null
+              : s.selection,
+        })),
+
+      addCanvasNote: (text) => {
+        const id = crypto.randomUUID();
+        const count = get().canvasTitles.length + get().canvasNotes.length;
+        const defaults = DEFAULT_CANVAS_NOTE();
+        set((s) => ({
+          canvasNotes: [
+            ...s.canvasNotes,
+            {
+              ...defaults,
+              id,
+              text: text ?? defaults.text,
+              x: defaults.x + count * 36,
+              y: defaults.y + count * 36,
+            },
+          ],
+          selection: { kind: "canvas-note", id },
+        }));
+        return id;
+      },
+
+      updateCanvasNote: (id, patch) =>
+        set((s) => ({
+          canvasNotes: s.canvasNotes.map((note) =>
+            note.id === id ? { ...note, ...patch } : note
+          ),
+        })),
+
+      moveCanvasNote: (id, x, y) =>
+        set((s) => ({
+          canvasNotes: s.canvasNotes.map((note) =>
+            note.id === id ? { ...note, x, y } : note
+          ),
+        })),
+
+      deleteCanvasNote: (id) =>
+        set((s) => ({
+          canvasNotes: s.canvasNotes.filter((note) => note.id !== id),
+          selection:
+            s.selection?.kind === "canvas-note" && s.selection.id === id
+              ? null
+              : s.selection,
         })),
 
       addPageSection: (viewId) => {
@@ -1440,7 +1570,7 @@ export const useAppMapStore = create<AppMapStore>()(
         })),
     }),
     {
-      name: "appmap-editor-v8",
+      name: "appmap-editor-v9",
       migrate: (persisted) => {
         const state = persisted as {
           views?: AppMapSnapshot["views"];
@@ -1545,17 +1675,32 @@ export const useAppMapStore = create<AppMapStore>()(
           );
         }
 
+        const legacy = state as Record<string, unknown>;
         const migrated = migrateAppMapSnapshot({
           views: state.views ?? [],
           components: state.components ?? [],
           sharedComponents: state.sharedComponents ?? [],
           actionCards: state.actionCards ?? [],
+          canvasTitles: Array.isArray(legacy.canvasTitles)
+            ? (legacy.canvasTitles as CanvasTitle[])
+            : [],
+          canvasNotes: Array.isArray(legacy.canvasNotes)
+            ? (legacy.canvasNotes as CanvasNote[])
+            : [],
           canvas: state.canvas ?? { x: 0, y: 0, zoom: 1 },
+          canvasLabels: legacy.canvasLabels,
+          canvasRegions: legacy.canvasRegions,
         });
         state.views = migrated.views;
         state.components = migrated.components;
         state.sharedComponents = migrated.sharedComponents;
         state.actionCards = migrated.actionCards;
+        (state as { canvasTitles?: CanvasTitle[] }).canvasTitles =
+          migrated.canvasTitles;
+        (state as { canvasNotes?: CanvasNote[] }).canvasNotes =
+          migrated.canvasNotes;
+        delete (state as Record<string, unknown>).canvasLabels;
+        delete (state as Record<string, unknown>).canvasRegions;
         state.canvas = migrated.canvas;
 
         return persisted;
@@ -1565,6 +1710,8 @@ export const useAppMapStore = create<AppMapStore>()(
         components: s.components,
         sharedComponents: s.sharedComponents,
         actionCards: s.actionCards,
+        canvasTitles: s.canvasTitles,
+        canvasNotes: s.canvasNotes,
         canvas: s.canvas,
       }),
     }
@@ -1578,17 +1725,22 @@ export function getAppMapSnapshot(): AppMapSnapshot {
     components: s.components,
     sharedComponents: s.sharedComponents,
     actionCards: s.actionCards,
+    canvasTitles: s.canvasTitles,
+    canvasNotes: s.canvasNotes,
     canvas: s.canvas,
   };
 }
 
 export function hydrateAppMap(snapshot: AppMapSnapshot): void {
+  const migrated = migrateAppMapSnapshot(snapshot);
   useAppMapStore.setState({
-    views: snapshot.views,
-    components: snapshot.components,
-    sharedComponents: snapshot.sharedComponents,
-    actionCards: snapshot.actionCards,
-    canvas: snapshot.canvas,
+    views: migrated.views,
+    components: migrated.components,
+    sharedComponents: migrated.sharedComponents,
+    actionCards: migrated.actionCards,
+    canvasTitles: migrated.canvasTitles,
+    canvasNotes: migrated.canvasNotes,
+    canvas: migrated.canvas,
     selection: null,
   });
 }
