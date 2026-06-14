@@ -32,28 +32,28 @@ export function InfiniteCanvas() {
     [canvas]
   );
 
-  const handlePointerDown = useCallback(
+  const handleEmptyPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.closest("[data-canvas-item]") ||
-        target.closest("[data-lego-handle]") ||
-        target.closest("[data-drop-zone]")
-      ) {
-        return;
-      }
+      if (e.button !== 0 || e.altKey) return;
 
-      if (e.button === 1 || (e.button === 0 && e.altKey)) {
-        e.preventDefault();
-        startPan(e.clientX, e.clientY);
-        return;
-      }
-
-      if (e.button === 0 && e.target === canvasRef.current) {
-        clearSelection();
-      }
+      e.preventDefault();
+      e.stopPropagation();
+      clearSelection();
+      startPan(e.clientX, e.clientY);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     },
     [clearSelection, startPan]
+  );
+
+  const handleCanvasPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.button !== 1 && !(e.button === 0 && e.altKey)) return;
+
+      e.preventDefault();
+      startPan(e.clientX, e.clientY);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    [startPan]
   );
 
   const handlePointerMove = useCallback(
@@ -69,9 +69,15 @@ export function InfiniteCanvas() {
     [isPanning, setCanvas]
   );
 
-  const handlePointerUp = useCallback(() => {
-    setIsPanning(false);
-  }, []);
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (isPanning) {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      }
+      setIsPanning(false);
+    },
+    [isPanning]
+  );
 
   return (
     <div
@@ -79,23 +85,30 @@ export function InfiniteCanvas() {
       data-canvas-viewport
       className="relative h-full w-full overflow-hidden bg-zinc-950 overscroll-none"
       style={{
-        cursor: isPanning ? "grabbing" : "default",
         touchAction: "none",
         backgroundImage:
           "radial-gradient(circle, rgb(161 161 170 / 0.35) 1px, transparent 1px)",
         backgroundSize: `${24 * canvas.zoom}px ${24 * canvas.zoom}px`,
         backgroundPosition: `${canvas.x}px ${canvas.y}px`,
       }}
-      onPointerDown={handlePointerDown}
+      onPointerDown={handleCanvasPointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
     >
+      <div
+        aria-hidden
+        className={`absolute inset-0 z-0 ${isPanning ? "cursor-grabbing" : "cursor-grab"}`}
+        onPointerDown={handleEmptyPointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      />
       <LegoDragProvider>
         <CanvasLayerProvider layerRef={layerRef} zoom={canvas.zoom}>
           <div
             ref={layerRef}
-            className="absolute origin-top-left"
+            className="absolute z-10 origin-top-left"
             style={{
               transform: `translate(${canvas.x}px, ${canvas.y}px) scale(${canvas.zoom})`,
             }}
@@ -118,7 +131,7 @@ export function InfiniteCanvas() {
       </LegoDragProvider>
 
       <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg bg-zinc-900/80 px-3 py-1.5 text-xs text-zinc-500 shadow-sm backdrop-blur">
-        Scroll to pan · Pinch or Shift+scroll to zoom · Alt + drag to pan · ↑↓
+        Drag empty canvas to pan · Scroll to pan · Pinch or Shift+scroll to zoom · ↑↓
         to reorder
       </div>
     </div>
