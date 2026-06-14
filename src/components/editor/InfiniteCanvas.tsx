@@ -1,11 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  clampCanvasZoom,
-  wheelDeltaToZoomFactor,
-  zoomCanvasAtPoint,
-} from "@/lib/canvas-geometry";
+import { useCallback, useRef, useState } from "react";
 import { CanvasLayerProvider, LegoDragProvider } from "@/lib/canvas-layer";
 import { useAppMapStore } from "@/store/appmap-store";
 import { CanvasOverlayLayer } from "./CanvasOverlays";
@@ -13,6 +8,7 @@ import { ActionCardLayer } from "./ActionCardNode";
 import { ConnectionLines } from "./ConnectionLines";
 import { ChildDragPreview, SectionDragPreview } from "./LegoDragUi";
 import { ViewFrame } from "./ViewFrame";
+import { useCanvasWheel } from "./useCanvasWheel";
 
 export function InfiniteCanvas() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -21,47 +17,7 @@ export function InfiniteCanvas() {
   const [isPanning, setIsPanning] = useState(false);
   const panStart = useRef({ x: 0, y: 0, canvasX: 0, canvasY: 0 });
 
-  useEffect(() => {
-    const el = canvasRef.current;
-    if (!el) return;
-
-    const onWheel = (e: WheelEvent) => {
-      // Pinch-to-zoom sends ctrlKey; Shift+scroll is a mouse-friendly alternative.
-      // Avoid metaKey so Cmd+scroll can stay browser zoom outside the canvas.
-      const isZoomGesture = e.ctrlKey || e.shiftKey;
-
-      if (isZoomGesture) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const current = useAppMapStore.getState().canvas;
-        const rect = el.getBoundingClientRect();
-        const anchorX = e.clientX - rect.left;
-        const anchorY = e.clientY - rect.top;
-        const wheelDelta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
-        const nextZoom = clampCanvasZoom(
-          current.zoom * wheelDeltaToZoomFactor(wheelDelta, e.deltaMode)
-        );
-
-        if (nextZoom !== current.zoom) {
-          useAppMapStore
-            .getState()
-            .setCanvas(zoomCanvasAtPoint(current, nextZoom, anchorX, anchorY));
-        }
-        return;
-      }
-
-      e.preventDefault();
-      const current = useAppMapStore.getState().canvas;
-      useAppMapStore.getState().setCanvas({
-        x: current.x - e.deltaX,
-        y: current.y - e.deltaY,
-      });
-    };
-
-    el.addEventListener("wheel", onWheel, { passive: false, capture: true });
-    return () => el.removeEventListener("wheel", onWheel, { capture: true });
-  }, []);
+  useCanvasWheel(canvasRef);
 
   const startPan = useCallback(
     (clientX: number, clientY: number) => {
