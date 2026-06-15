@@ -82,20 +82,18 @@ export function ViewFrame({ view, zoom }: ViewFrameProps) {
   return (
     <div
       data-canvas-item
-      className={`absolute w-max min-w-[var(--view-width)] rounded-xl border shadow-xl transition-shadow ${
+      className={`absolute rounded-xl border shadow-xl transition-shadow ${
           isSelected
             ? "border-blue-500/60 shadow-blue-500/10"
             : showViewDrop
               ? "border-emerald-500/60 ring-2 ring-emerald-500/20"
               : "border-zinc-700/80"
         }`}
-        style={
-          {
-            left: view.x,
-            top: view.y,
-            "--view-width": `${view.width}px`,
-          } as React.CSSProperties
-        }
+        style={{
+          left: view.x,
+          top: view.y,
+          width: view.width,
+        }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
@@ -119,10 +117,12 @@ export function ViewFrame({ view, zoom }: ViewFrameProps) {
             >
               <path d="M2 3a1 1 0 011-1h2.5l1 1.5H13a1 1 0 011 1v7a1 1 0 011 1H3a1 1 0 01-1-1V3z" />
             </svg>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-zinc-100">{view.name}</p>
+            <div className="min-w-0 flex-1">
+              <p className="break-words text-sm font-semibold text-zinc-100">
+                {view.name}
+              </p>
               {view.description ? (
-                <p className="mt-0.5 text-xs leading-relaxed text-zinc-400">
+                <p className="mt-0.5 break-words whitespace-pre-wrap text-xs leading-relaxed text-zinc-400">
                   {view.description}
                 </p>
               ) : null}
@@ -133,8 +133,7 @@ export function ViewFrame({ view, zoom }: ViewFrameProps) {
         <ViewDropZone
           viewId={view.id}
           active={showViewDrop}
-          className="flex flex-col gap-2 rounded-b-xl bg-zinc-950 p-3"
-          style={{ width: view.width } as React.CSSProperties}
+          className="flex w-full min-w-0 flex-col gap-2 rounded-b-xl bg-zinc-950 p-3"
         >
           {sections.length === 0 ? (
             <p className="py-6 text-center text-xs text-zinc-600">
